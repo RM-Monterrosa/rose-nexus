@@ -40,6 +40,20 @@ class CompileResult:
     pdf_path: pathlib.Path
 
 
+_MAX_LOG_CHARS = 4000
+
+
+def _bounded_log(text: str) -> str:
+    """Keep compiler diagnostics useful without dumping unbounded output."""
+
+    if len(text) <= _MAX_LOG_CHARS:
+        return text
+    return (
+        text[:_MAX_LOG_CHARS]
+        + f"\n[... truncated: the sandbox log exceeded {_MAX_LOG_CHARS} characters ...]"
+    )
+
+
 def detect_runtime(preferred: str | None = None) -> SandboxRuntime | None:
     """Find the preferred runtime, then Podman, then Docker, if available."""
 
@@ -175,7 +189,7 @@ def compile_document(
                 detail=f"timeout after {limits.timeout_seconds} seconds",
             ) from error
         if completed.returncode != 0:
-            detail = (completed.stderr or completed.stdout).strip()
+            detail = _bounded_log((completed.stderr or completed.stdout).strip())
             raise CompileError(
                 "the sandboxed LaTeX compilation failed",
                 code="compile_failed",

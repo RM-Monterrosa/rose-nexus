@@ -34,6 +34,8 @@ if os.environ.get("STUB_SLEEP"):
     time.sleep(float(os.environ["STUB_SLEEP"]))
 if os.environ.get("STUB_FAIL"):
     print("! LaTeX Error: boom", file=sys.stderr)
+    if os.environ.get("STUB_CHATTER"):
+        print("X" * int(os.environ["STUB_CHATTER"]), file=sys.stderr)
     sys.exit(1)
 for argument in sys.argv[1:]:
     if argument.startswith("--mount=") and "dst=/out" in argument:
@@ -176,6 +178,20 @@ class CompileExecutionTests(SandboxTestBase):
             )
         self.assertEqual(caught.exception.code, "compile_failed")
         self.assertIn("LaTeX Error", caught.exception.detail or "")
+
+    def test_failure_log_is_bounded(self):
+        os.environ["STUB_FAIL"] = "1"
+        os.environ["STUB_CHATTER"] = "50000"
+        with self.assertRaises(CompileError) as caught:
+            compile_document(
+                self.src / "document.tex",
+                image=IMAGE,
+                limits=SandboxLimits(timeout_seconds=30),
+                runtime_name="podman",
+            )
+        detail = caught.exception.detail or ""
+        self.assertLessEqual(len(detail), 4500)
+        self.assertIn("truncated", detail.lower())
 
     def test_timeout_is_reported_and_does_not_hang(self):
         os.environ["STUB_SLEEP"] = "5"

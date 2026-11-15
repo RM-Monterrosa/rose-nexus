@@ -31,7 +31,7 @@ LLM todavía. Documento vivo.
 | T7 | Escritura fuera del job dir | Todo se escribe bajo un directorio temporal dentro de `out`; se renombra al final; sin rutas derivadas del nombre de archivo del usuario (se sanea el slug). |
 | T8 | Escape del contenedor | Sin red, rootfs de solo lectura, `nobody`, `cap-drop=ALL`, `no-new-privileges`, límites de CPU/RAM/PIDs/tiempo. |
 | T9 | Imagen mutable comprometida | Solo digest `@sha256:`, sin tags. |
-| T10 | Fuga de contenido por logs | El manifiesto guarda hashes y rutas relativas; los logs de compilación se truncan y se guardan en el job dir, no en stdout del servidor. |
+| T10 | Fuga de contenido por logs | El manifiesto guarda hashes y rutas relativas; el error de compilación incluye un extracto de `stderr`/`stdout` **acotado a 4000 caracteres** con marca de truncamiento, y no se persiste ningún archivo de log en el job. |
 | T11 | Sustitución de tokens en plantilla | Render estricto: token desconocido o valor que reinyecta `{{` es error. |
 | T12 | Ejecución de scripts remotos | Fuera de alcance por regla: no se descarga ni ejecuta nada. |
 
