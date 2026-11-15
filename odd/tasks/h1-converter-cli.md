@@ -63,7 +63,15 @@ pruebas en el mismo commit):
 d5acca1 feat(security) política LaTeX + sandbox + artefactos
 a38d9d6 feat(studio)  pipeline + fixtures + integración/seguridad
 1395fba feat(cli)     convert/brands/doctor
+1d52788 fix(security) nombres de perfil sin escape de branding root
+575ece1 fix(studio)   assets dentro del input del sandbox + limpieza de jobs fallidos
+9687f5b fix(security) diagnóstico de compilación acotado + modelo de amenazas
 ```
+
+Los tres `fix(...)` provienen de la **verificación independiente**, que devolvió
+`blocked` con dos defectos reproducibles y una desalineación documental. Cada
+corrección tiene su prueba de regresión. El default de marca es `invering`
+desde `73ab3be`.
 
 El total supera la guía de ~400 líneas por commit porque es el arranque del
 repositorio (andamiaje + documentación incluidos). Los cortes son por
@@ -133,3 +141,10 @@ decisión del usuario**; no se publicó nada.
   (`d5acca1`: política LaTeX + sandbox + artefactos) en una rama apilada, porque
   el candidato completo (6.049 líneas) excede el presupuesto de contexto del
   revisor nativo (`lens_context_budget_exceeded`, sin autoridad creada).
+- **L8** — La verificación independiente (`gentle-ai-verify`) devolvió `blocked`
+  con: (1) alto — el sandbox solo recibía `document.tex`, así que cualquier PDF
+  con imágenes o logo habría fallado con XeLaTeX real; (2) medio — un `brand`
+  de front matter permitía leer perfiles fuera de `branding/`; (3) bajo — el
+  modelo de amenazas T10 no coincidía con el manejo real de logs. Corregidos en
+  `1d52788`, `575ece1` y `9687f5b`, cada uno con prueba de regresión previa
+  (RED → GREEN). Suite: 160 pruebas en verde.
