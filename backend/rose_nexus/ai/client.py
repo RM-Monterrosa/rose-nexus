@@ -16,6 +16,7 @@ from typing import Mapping, Sequence
 from urllib.parse import urlsplit
 
 from ..core.errors import RoseNexusError
+from .context import ContextBudget, ContextEndpoint, ContextPreflight
 from .errors import InferenceBusy, InferenceConfigurationError, InferenceUnavailable
 from .metrics import InferenceMetrics, MetricsRegistry
 from .provider import HealthStatus, LlmProvider, OpenAICompatibleProvider
@@ -42,6 +43,13 @@ class InferenceClient:
         self.settings = settings
         self.provider = OpenAICompatibleProvider(settings) if provider is None else provider
         self.registry = MetricsRegistry() if registry is None else registry
+        endpoint = (
+            self.provider
+            if isinstance(self.provider, ContextEndpoint)
+            else OpenAICompatibleProvider(settings)
+        )
+        self.preflight = ContextPreflight(endpoint)
+        self.context_budget = ContextBudget(settings.context_tokens)
         self._slots = threading.BoundedSemaphore(settings.max_concurrency)
         self._endpoint_host = urlsplit(settings.endpoint).hostname or ""
 
@@ -81,6 +89,11 @@ class InferenceClient:
                     raise InferenceConfigurationError(
                         "system and user inputs must not be empty"
                     )
+            measurement = self.preflight.measure(messages)
+            self.context_budget.evaluate(
+                measurement,
+                max_tokens=self.settings.max_tokens,
+            )
             acquired = self._slots.acquire(timeout=self.settings.queue_timeout_seconds)
             if not acquired:
                 raise InferenceBusy("Inference queue wait timed out")

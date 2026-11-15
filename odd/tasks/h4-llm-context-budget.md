@@ -16,8 +16,8 @@ Runner: PATH="$PWD/.venv/bin:$PATH" ./scripts/verify.sh · Pruebas focales con P
 
 ## Tasks
 
-- T1 · S1-S3,S6,S9 · parent inline · done · RED: módulo context ausente (1 error de importación) → GREEN: 49 pruebas AI OK; commit de slice 1, hash en L7 · Transporte ContextPreflight verificado · Risk: item 2 (nuevos usos del transporte anti-SSRF y privacidad).
-- T2 · S1-S6,S9 · parent inline · pending · RED/GREEN pendiente · Slice 2, rama feat/h4-context-admission: presupuesto, InferenceClient y rechazo fail-closed.
+- T1 · S1-S3,S6,S9 · parent inline · done · RED: módulo context ausente (1 error de importación) → GREEN: 49 pruebas AI OK; commit a6e73ff · Transporte ContextPreflight verificado · Risk: item 2 (nuevos usos del transporte anti-SSRF y privacidad).
+- T2 · S1-S6,S9 · parent inline · done · RED: 4 pruebas nuevas, 5 fallos → GREEN: 53 pruebas AI y 19 CLI/web OK; commit de slice 2, hash en L9 · Presupuesto y rechazo fail-closed verificados.
 - T3 · S4-S6,S9 · parent inline · pending · RED/GREEN pendiente · Slice 3, rama feat/h4-context-surfaces: CLI/web compatible y señalización de respuestas limitadas.
 - T4 · S1-S3,S6-S7 · parent inline · pending · Evidencia pendiente · Slice 4, rama feat/h4-context-docs: ADR-008, documentación, configuración y calibración viva opt-in.
 - T5 · S1-S9 · parent + gentle-ai-verify · pending · Verificación completa, revisión independiente por riesgo y cierre · Risk: item 2 (seguridad de transporte y privacidad).
@@ -44,3 +44,5 @@ Documenta la arquitectura en ADR-008 y actualiza las instrucciones pertinentes»
 - L4: El usuario eligió «Cadena sobre la rama de H4 (recomendada)» (chain_strategy=feature-branch-chain). Cuatro slices dependientes: preflight → admission → surfaces → docs. Tracker PR futuro en borrador; ninguna publicación ni fusión autorizada.
 - L5: Commit de tracking 093f416 sobre la rama tracker. La rama por defecto remota se verificó como main. El conteo de slices se mide desde cf18a4d/H3, no desde origin/main, porque la cadena conserva las dependencias H1→H2→H3.
 - L6: Slice 1 en feat/h4-context-preflight. RED observado: ModuleNotFoundError rose_nexus.ai.context (1 error). GREEN: 24 pruebas focales de preflight/provider y luego 49 pruebas AI, todas OK. No se declaró todavía concordancia exacta con usage.prompt_tokens: esa aceptación pertenece a T4.
+- L7: Slice 1 comprometido como a6e73ff (333 inserciones, 1 eliminación). Boundary para el siguiente slice: feat/h4-context-preflight en a6e73ff.
+- L8: Slice 2 en feat/h4-context-admission. RED: cuatro pruebas públicas nuevas del cliente fallaron (5 fallos incluyendo subtests) porque no existía evaluación de presupuesto. GREEN: 53 pruebas AI y 19 pruebas de integración CLI/web OK. La igualdad prompt+max_tokens=contexto se acepta; contexto+1 se rechaza con prompt_too_long antes del semáforo y completion.

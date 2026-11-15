@@ -7,8 +7,10 @@ import dataclasses
 import json
 import unittest
 import uuid
+from unittest import mock
 
 from rose_nexus.ai.client import InferenceClient
+from rose_nexus.core.errors import RoseNexusError
 from rose_nexus.ai.errors import (
     InferenceBusy,
     InferenceConfigurationError,
@@ -157,6 +159,77 @@ class InferenceClientTests(unittest.TestCase):
             )
             self.assertEqual(answer.text, "A measured answer.")
             self.assertEqual(answer.metrics.total_tokens, 24)
+
+    def test_context_budget_accepts_equality_and_rejects_one_token_over(self) -> None:
+        with FakeLlmServer(server_context_tokens=64, prompt_tokens=48) as server:
+            answer = InferenceClient(
+                self.settings(server, context_tokens=64, max_tokens=16)
+            ).ask("Answer briefly.", self.secret)
+            self.assertEqual(answer.text, "A measured answer.")
+            self.assertEqual(server.request_count, 1)
+            self.assertEqual(server.last_payload["max_tokens"], 16)
+
+        with FakeLlmServer(server_context_tokens=64, prompt_tokens=49) as server:
+            registry = MetricsRegistry()
+            client = InferenceClient(
+                self.settings(server, context_tokens=64, max_tokens=16),
+                registry=registry,
+            )
+            client._slots = mock.Mock()
+            with self.assertRaises(RoseNexusError) as caught:
+                client.ask("Answer briefly.", self.secret)
+            self.assertEqual(caught.exception.code, "prompt_too_long")
+            self.assertEqual(caught.exception.exit_code, 2)
+            self.assertIn("65", str(caught.exception))
+            self.assertIn("64", str(caught.exception))
+            self.assertNotIn(self.secret, str(caught.exception))
+            self.assertEqual(server.request_count, 0)
+            client._slots.acquire.assert_not_called()
+            self.assertEqual(len(registry.snapshot()), 1)
+            self.assertEqual(registry.snapshot()[0].error_code, "prompt_too_long")
+            self.assertNotIn(self.secret, registry.snapshot()[0].as_log())
+
+    def test_context_budget_uses_smaller_configured_or_server_limit(self) -> None:
+        for configured, reported in ((32, 64), (64, 32)):
+            with self.subTest(configured=configured, reported=reported), FakeLlmServer(
+                server_context_tokens=reported, prompt_tokens=25
+            ) as server:
+                client = InferenceClient(
+                    self.settings(server, context_tokens=configured, max_tokens=8)
+                )
+                client._slots = mock.Mock()
+                with self.assertRaises(RoseNexusError) as caught:
+                    client.ask("Answer briefly.", self.secret)
+                self.assertEqual(caught.exception.code, "prompt_too_long")
+                self.assertEqual(server.request_count, 0)
+                client._slots.acquire.assert_not_called()
+
+    def test_generation_reserve_larger_than_context_is_a_configuration_error(self) -> None:
+        with FakeLlmServer(server_context_tokens=64, prompt_tokens=1) as server:
+            client = InferenceClient(
+                self.settings(server, context_tokens=64, max_tokens=65)
+            )
+            client._slots = mock.Mock()
+            with self.assertRaises(InferenceConfigurationError) as caught:
+                client.ask("Answer briefly.", self.secret)
+            self.assertEqual(caught.exception.code, "inference_configuration_invalid")
+            self.assertIn("65", str(caught.exception))
+            self.assertIn("64", str(caught.exception))
+            self.assertNotIn(self.secret, str(caught.exception))
+            self.assertEqual(server.request_count, 0)
+            client._slots.acquire.assert_not_called()
+
+    def test_preflight_failure_rejects_before_slot_and_completion(self) -> None:
+        with FakeLlmServer(behavior="tokenize_http_500") as server:
+            registry = MetricsRegistry()
+            client = InferenceClient(self.settings(server), registry=registry)
+            client._slots = mock.Mock()
+            with self.assertRaises(InferenceHTTPError):
+                client.ask("Answer briefly.", self.secret)
+            self.assertEqual(server.request_count, 0)
+            client._slots.acquire.assert_not_called()
+            self.assertEqual(registry.snapshot()[0].error_code, "inference_http_error")
+            self.assertNotIn(self.secret, registry.snapshot()[0].as_log())
 
     def test_health_delegates_to_the_provider(self) -> None:
         with FakeLlmServer() as server:

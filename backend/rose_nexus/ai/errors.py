@@ -48,6 +48,24 @@ class InferenceBusy(InferenceUnavailable):
     code = "inference_busy"
 
 
+class InferencePromptTooLong(RoseNexusError):
+    """The rendered prompt and requested generation exceed the context budget."""
+
+    code = "prompt_too_long"
+    exit_code = 2
+
+    def __init__(self, *, prompt_tokens: int, max_tokens: int, context_tokens: int) -> None:
+        self.prompt_tokens = prompt_tokens
+        self.max_tokens = max_tokens
+        self.context_tokens = context_tokens
+        self.required_tokens = prompt_tokens + max_tokens
+        super().__init__(
+            f"Prompt budget exceeded: {prompt_tokens} prompt tokens + "
+            f"{max_tokens} generation tokens = {self.required_tokens}, "
+            f"but the context limit is {context_tokens}"
+        )
+
+
 class InferenceConfigurationError(RoseNexusError):
     """Inference configuration or direct client input is invalid."""
 
