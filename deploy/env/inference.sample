@@ -1,0 +1,26 @@
+# Rose Nexus — variables de inferencia (H3)
+# Copiar a tu entorno o a un archivo local que NO se commitea.
+# Los secretos van SOLO en el entorno; nunca en Git.
+
+ROSE_LLM_ENDPOINT=http://127.0.0.1:18080/v1
+ROSE_LLM_MODEL=rose-spark-4b
+
+ROSE_LLM_TIMEOUT_SECONDS=60
+ROSE_LLM_CONNECT_TIMEOUT_SECONDS=5
+ROSE_LLM_MAX_TOKENS=512
+ROSE_LLM_TEMPERATURE=0.2
+ROSE_LLM_TOP_P=0.95
+ROSE_LLM_CONTEXT_TOKENS=8192
+
+# La instancia tiene 1 slot: no subir por encima de 1 sin cambiar el despliegue.
+ROSE_LLM_MAX_CONCURRENCY=1
+ROSE_LLM_QUEUE_TIMEOUT_SECONDS=30
+
+# Habilita `rose llm ask|bench` y la pantalla /app/llm.
+ROSE_LLM_ENABLED=false
+
+# Permite endpoints fuera de loopback (no recomendado).
+ROSE_LLM_ALLOW_REMOTE_ENDPOINT=false
+
+# Opcional, si el servidor del modelo exige token.
+ROSE_LLM_API_KEY=

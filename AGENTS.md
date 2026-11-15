@@ -138,3 +138,18 @@ PYTHONPATH=backend python3 -m rose_nexus.cli convert tests/fixtures/markdown/01-
 - Los PDF no llevan `/Title` en metadatos; `babel` (partición española) e índice
   siguen pendientes.
 - Las fuentes Archivo/IBM Plex no se empaquetan: licencias sin verificar.
+
+## 9. Inferencia local (H3)
+
+- El modelo es **borrador, no verdad**: tiene errores factuales conocidos. Nunca
+  se usa como fuente de verdad ni para decidir acciones.
+- **Prohibido** ejecutar herramientas elegidas por el modelo, bucles autónomos y
+  MCP: el modelo devuelve texto y nada más.
+- **Nunca** registrar prompts, respuestas ni `ROSE_LLM_API_KEY`. Solo métricas:
+  tokens, latencia, tok/s, estado y código de error.
+- Endpoint **solo loopback**; se valida la resolución DNS en tiempo de llamada y
+  **no se siguen redirecciones**. Habilitar un endpoint remoto exige ADR.
+- Un worker de uvicorn: el semáforo de concurrencia es **por proceso** y la
+  instancia tiene **1 slot**.
+- `studio/` no importa `ai/`: si el modelo se cae, el convertidor y la web siguen
+  funcionando.

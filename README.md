@@ -4,10 +4,10 @@ Plataforma personal y local para transformar documentos, estudiar y mover
 información entre dispositivos, con IA local opcional. El plan técnico vive en
 [`docs/production-plan.md`](docs/production-plan.md).
 
-**Estado actual:** H0 (baseline verificado) y H1 (convertidor CLI determinista
-`.md`/`.txt` → `.tex` → `.pdf`). El PDF requiere una imagen TeX fijada por digest
-(`ROSE_SANDBOX_IMAGE`); sin ella el flujo `.tex` sigue funcionando y el PDF se
-rechaza con exit 4. No hay MCP, OCR, ASR, multiagentes ni frontend.
+**Estado actual:** H0, H1 (convertidor determinista), H2 (web MVP) y H3 (cliente de
+inferencia local + CLI + pantalla experimental). El PDF requiere una imagen TeX
+fijada por digest (`ROSE_SANDBOX_IMAGE`); sin ella el flujo `.tex` sigue
+funcionando y el PDF se rechaza con exit 4. No hay MCP, OCR, ASR ni agentes.
 
 ## Qué funciona hoy
 
@@ -54,6 +54,22 @@ pip install -e .
 rose convert documento.md --out build
 rose convert documento.md --brand demo --out build   # provisional
 ```
+
+## Inferencia local (opcional)
+
+El modelo local (`rose-spark-4b` vía llama.cpp y túnel SSH en
+`127.0.0.1:18080`) se consulta con un cliente desacoplado. No convierte
+documentos, no ejecuta herramientas y no es fuente de verdad.
+
+```bash
+export PYTHONPATH=backend ROSE_LLM_ENABLED=true
+.venv/bin/python -m rose_nexus.cli llm health
+.venv/bin/python -m rose_nexus.cli llm ask --prompt "Explicá qué es un sandbox"
+.venv/bin/python -m rose_nexus.cli llm bench --runs 3
+```
+
+Configuración, límites de concurrencia, errores y pruebas: `docs/inference.md`.
+Decisiones: `docs/decisions/ADR-007-inference.md`.
 
 ## Verificación
 

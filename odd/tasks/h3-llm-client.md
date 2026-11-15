@@ -60,21 +60,42 @@ nunca para decidir acciones ni ejecutar herramientas.
   backend: PR #1 y #2 siguen abiertos. Tras fusionarlos, el destino natural es
   `main`.
 
+## Slices
+
+| Commit | Contenido |
+|---|---|
+| `a7b3581` | Documento de feature, specs S1–S18 y ADR-007 |
+| `19d0c91` | Núcleo `ai/` (errores, settings, provider, métricas, cliente) + 40 pruebas |
+| `4048f18` | CLI `rose llm health|ask|bench` + 12 pruebas de subproceso |
+| `8472eed` | Pantalla `/app/llm` autenticada + 7 pruebas con uvicorn real |
+| *(docs)* | `docs/inference.md`, muestra de entorno, prueba viva opcional y este registro |
+
+## Evidencia de verificación
+
+- **260 pruebas** en verde; la prueba viva opcional se saltea sin
+  `ROSE_LLM_LIVE_TESTS=true`.
+- **CLI real contra el modelo:** `health` 215 ms · `ask` 94,8 tok/s · `bench`
+  mediana **93,68 tok/s** (referencia cruda: 93,76) · prompt secreto con **0**
+  apariciones en stdout/stderr.
+- **E2E de la pantalla 11/11** con el modelo real: sesión obligatoria, CSRF 403,
+  respuesta escapada (aun pidiéndole `<script>`), métricas visibles, modo
+  deshabilitado sin llamadas y `/app` + `/api/health` operativos.
+- **Aislamiento:** con `ROSE_LLM_ENDPOINT` en un puerto muerto, el convertidor
+  generó un PDF real.
+- **Benchmark de referencia** (3 corridas crudas, sin cliente): health 309,5 ms ·
+  wall 1.103 ms · 93,8 tok/s · 57 tokens de entrada.
+
 ## Tasks
 
-| ID | Spec | Entrega |
-|---|---|---|
-| T1 | S1, S5, S7, S14 | `ai/`: errores tipados, configuración por entorno, provider compatible OpenAI |
-| T2 | S6, S8 | Métricas sin contenido (tokens, latencia, tok/s) + registro acotado |
-| T3 | S4 | Cliente con semáforo de concurrencia y errores de saturación |
-| T4 | S9 | CLI `rose llm health|ask|bench` |
-| T5 | S10 | Pruebas con servidor HTTP simulado + integración opcional contra el túnel |
-| T6 | S11 | Pantalla experimental `/app/llm` autenticada; llamadas por `run_in_threadpool` (S16) |
-| T7 | S13 | ADR-007, documentación E2E y PR #3 |
-| T8 | S2, S12 | Regresión: el convertidor y los documentos originales no cambian |
-| T9 | S15 | Servidor con un worker; límite de concurrencia documentado como por-proceso |
-| T10 | S17 | Anti-SSRF: resolución a loopback + sin redirecciones |
-| T11 | S18 | Métricas tolerantes a `usage`/`timings` ausentes |
+| ID | Spec | Entrega | Estado |
+|---|---|---|---|
+| T1–T3 | S1, S5, S7, S14 | Núcleo `ai/` con transporte stdlib y errores tipados | ✅ |
+| T9–T11 | S4, S17, S18 | Anti-SSRF, sin redirects, métricas por proceso y campos opcionales | ✅ |
+| T4 | S9 | CLI `health`/`ask`/`bench` | ✅ |
+| T6 | S11, S16 | Pantalla `/app/llm` con `run_in_threadpool` | ✅ |
+| T5 | S10 | Simulados + prueba viva opcional | ✅ |
+| T7 | S13 | ADR-007, `docs/inference.md`, PR #3 | 🚧 |
+| T8 | S2, S12 | Regresión del convertidor con el LLM caído | ✅ |
 
 ## Log
 
@@ -91,3 +112,9 @@ nunca para decidir acciones ni ejecutar herramientas.
   de uvicorn, `urllib` fuera del event loop, anti-SSRF con bloqueo de
   redirecciones y tolerancia a respuestas sin `usage`/`timings`. Se incorporan al
   núcleo antes de cerrarlo.
+- **L5** — Núcleo cerrado (`19d0c91`) con las cuatro condiciones: resolución DNS a
+  loopback, `HTTPRedirectHandler` que no sigue `3xx`, `run_in_threadpool` en la
+  capa web y métricas `null` cuando faltan `usage`/`timings`.
+- **L6** — CLI (`4048f18`) y pantalla (`8472eed`) verificados contra el modelo
+  real: `bench` 93,68 tok/s de mediana y E2E de la pantalla 11/11. El prompt de
+  prueba no aparece en stdout, stderr ni métricas.
