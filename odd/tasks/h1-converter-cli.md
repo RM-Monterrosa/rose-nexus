@@ -148,3 +148,12 @@ decisión del usuario**; no se publicó nada.
   modelo de amenazas T10 no coincidía con el manejo real de logs. Corregidos en
   `1d52788`, `575ece1` y `9687f5b`, cada uno con prueba de regresión previa
   (RED → GREEN). Suite: 160 pruebas en verde.
+- **L9** — El usuario decidió **no ejecutar la revisión nativa** sobre este
+  incremento («Si quieres no hagamos lo de gentle»). Consecuencia: la autoridad
+  de la rebanada `d5acca1` queda **inerte** (0 ejecuciones enviadas, ninguna
+  mutación; no se borra ni se repara), no se toca la configuración de ruteo de
+  modelos y no se desactiva el interruptor de RDD. La cobertura de riesgo queda
+  a cargo de la verificación independiente (`gentle-ai-verify`, informe
+  `blocked` con 2 defectos ya corregidos) y de las 160 pruebas automatizadas.
+  Si más adelante se quiere revisar, el camino previsto es por rebanadas
+  encadenadas de ~400 líneas.
