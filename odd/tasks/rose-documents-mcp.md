@@ -1,0 +1,37 @@
+Objetivo: recuperar el H3 original `rose-documents`, Pi, tool contract, límites y trazas sobre funciones directas existentes.
+Rama tracker: feat/rose-documents-mcp (base feat/h4-context-docs 9b3e51d) · Entrega: feature-branch-chain · Pronóstico: 1200–1700 líneas de autoría.
+Runner: PATH="$PWD/.venv/bin:$PATH" ./scripts/verify.sh · Pi 1.5.2 · MCP STDIO stdlib, protocolo 2025-11-25 · Sin nuevas dependencias.
+
+## Specs
+
+- S1: «H3 — Integración agente/MCP | P1 | `rose-documents`, Pi, tool contract, límites, trazas. | El agente solicita generación y recibe `job_id`; tests pasan.» Comprobación: Pi supervisado invoca render y recibe el ID del job web, pudiendo consultar su estado, metadatos del documento y perfiles instalados.
+- S2: «No quiero dejar de usar esas cosas, y si alguna de esas puede ayudar a optimizar el rendimiento del modelo y su consumo, hagamoslo.» Comprobación: medir overhead/totales de protocolo y de cada workflow; no afirmar mejora de tok/s ni VRAM por MCP/Skills. Mantener resultados compactos y Skills bajo demanda.
+- S3: «Revisa y dime que opinas antes de hacer algun cambio» Comprobación: revisión previa completada antes de «Perfecto, comienza entonces»; ADR nuevo y verificación independiente para la frontera de herramientas.
+- S4: «Perfecto, comienza entonces» Comprobación: ejecutar la arquitectura ya revisada —MCP STDIO delgado, funciones directas reutilizadas, salidas compactas y Skills específicas bajo demanda— sin permitir que rose-spark-4b elija/ejecute herramientas y sin abrir HTTP.
+- S5: «No modifiques H1/H2/H3 innecesariamente, no fusiones PR y no invoques la revisión nativa previamente descartada.» Comprobación: cambios compartidos solo cuando sean necesarios para reutilizar jobs; ninguna fusión en esta implementación. La disposición sobre revisión nativa se mantendrá solo para los targets H4 explícitamente autorizados; los candidatos nuevos seguirán la autoridad RDD vigente.
+- S6: «`get_document_metadata(document_id)` — devuelve metadatos.» Comprobación: cuarta herramienta incluida; consulta acotada por el principal ligado, sin filesystem paths ni enlaces autenticados de la web.
+- S7: «Exposición a Pi: empezar con pocas herramientas esenciales `direct`; indexadores y herramientas grandes como `deferred`/`codemode` si la versión instalada de Pi lo soporta; las destructivas deshabilitadas/ocultas. Confirmar con `pi mcp --help` y `/mcp`.» Comprobación: cuatro tools direct, ninguna destructiva, descubrimiento real en Pi 1.5.2.
+- S8: «`document-authoring`: preguntas mínimas → elección de preset → revisión de estructura → creación/conversión → comprobación visual → enlace del PDF.» Comprobación: Skill breve y lazy si Pi la admite; no reemplaza la verificación del motor y conserva la revisión visual antes de entregar un PDF.
+- S9: «Las Skills no sustituyen un sandbox ni autorizaciones a nivel de API. Los `.md` y `SKILL.md` de terceros son **datos no confiables** hasta revisarlos.» Comprobación: permisos/sandbox en código, Skill local revisada, modelos y documentos tratados como contenido no confiable.
+
+## Tasks
+
+- T1 · S1,S3-S6 · gentle-ai-worker por context backstop · in_progress · Slice 1, rama feat/rose-documents-service: extraer servicio compartido de documentos/jobs/metadatos y preservar regresiones web · Risk: items 2, 4 y 6 (identidad, runners proceso-local y contratos H2 compartidos).
+- T2 · S1,S3-S4,S7,S9 · parent inline/delegado por trigger · pending · Slice 2, rama feat/rose-documents-protocol: STDIO JSON-RPC 2025-11-25, ciclo de vida y contratos protocolares · Risk: item 2 (frontera de entrada no confiable).
+- T3 · S1-S7,S9 · parent inline/delegado por trigger · pending · Slice 3, rama feat/rose-documents-tools: cuatro herramientas direct, principal ligado, trazas y pruebas de ownership/errores · Risk: item 2 (permisos y privacidad).
+- T4 · S1-S9 · parent inline/delegado por trigger · pending · Slice 4, rama feat/rose-documents-pi: ADR-009, runbook, Skill document-authoring lazy, safe-workflow y prueba Pi opt-in con medición; workers serializados en prueba inicial.
+- T5 · S1-S9 · parent + gentle-ai-verify · pending · Suite completa, contrato/protocolo, seguridad, verificación independiente y cierre · Risk: items 2, 4 y 6.
+
+## Log
+
+- L1: «Perfecto, comienza entonces» sobre la recomendación revisada: recuperar rose-documents STDIO delgado, Skills bajo demanda, salidas compactas, fragmentación solo tras medir, tuning llama.cpp separado y ninguna herramienta autónoma elegida por rose-spark-4b.
+- L2: Alcance confirmado por el usuario al pedir revisar el H3 original: «H3 — Integración agente/MCP | P1 | `rose-documents`, Pi, tool contract, límites, trazas. | El agente solicita generación y recibe `job_id`; tests pasan.» El H3 ejecutado previamente fue cliente LLM, no esta integración.
+- L3: Rama feat/rose-documents-mcp creada desde feat/h4-context-docs en 9b3e51d. Árbol inicial limpio. No se fusionarán PR existentes ni se duplicará la lógica del convertidor.
+- L4: Hechos de exploración: Pi 1.5.2; paquete Python `mcp` ausente; lista de versiones protocolares aceptada incluye 2025-11-25. STDIO usa JSON-RPC delimitado por líneas. Se elige subconjunto stdlib estrecho (initialize, initialized, ping, tools/list, tools/call, notifications/cancelled, EOF) y no framework general ni dependencia nueva.
+- L5: Reutilización observada: web.api.submit_conversion_job inserta job y lo encola; Repository/get_job/list_artifacts aplican ownership; list_profiles devuelve perfiles validados. MCP devolverá el job_id de la base web, no el workspace interno de artifacts. Servicio compartido propuesto: web/document_service.py sin FastAPI.
+- L6: Riesgo técnico descubierto: JobRunner es proceso-local y start() recupera globalmente jobs running. La validación Pi inicial será serializada (web detenida durante worker MCP); no se afirmará ejecución simultánea web+MCP segura. Implementar ownership atómico compartido sería otro incremento de alta consecuencia y no se asumirá silentemente.
+- L7: T4 incluirá una Skill document-authoring pequeña solamente si el mecanismo instalado de Pi la descubre de forma lazy y aporta a la prueba real. Fragmentación/RAG/streaming/tuning de inferencia y function calling autónomo quedan fuera de este incremento.
+- L8: Pronóstico de cuatro slices de trabajo + verificación, 1200–1700 líneas; la estrategia ask-on-risk requiere elección antes del primer commit de implementación.
+- L9: Corrección/complemento textual del usuario sobre §6 del plan: incorpora explícitamente «`get_document_metadata(document_id)` — devuelve metadatos.»; «`render_document(source_id, branding_profile, output_format)` — crea trabajo de compilación controlado.»; «`get_document_status(job_id)` — consulta estado, errores y artefactos.»; «`list_branding_profiles()` — lista perfiles autorizados.». También reitera `direct` para herramientas esenciales y funciones directas para validación MIME/tamaño/permisos.
+- L10: Las recomendaciones aportadas para `document-authoring` incluyen comprobación visual y enlace PDF; `safe-workflow` es transversal. Este incremento no adopta `rose-library`, `rose-repositories`, `rose-http-gateway`, ASR, OCR, RAG, escritura de notas ni acciones destructivas. Skills solo guían procedimiento; permisos y sandbox permanecen en código.
+- L11: El usuario eligió chain_strategy=feature-branch-chain. Slices propuestos: service → protocol → tools → pi. Tracker futuro draft/no-merge; publicación no autorizada todavía. T1 se delega con superficies limitadas por context backstop.
