@@ -41,12 +41,35 @@
 
 | ID | Spec | Ruta | Commit |
 |---|---|---|---|
-| T1 | S1, S2 | Andamiaje, `AGENTS.md`, plan renombrado, ADR-001 | `chore: scaffold repo…` |
-| T2 | S5, S6, S12 | Parser determinista MD/TXT + pruebas unitarias | `feat(studio): deterministic parser…` |
-| T3 | S5, S4 | Generador LaTeX, escape, plantilla y perfil `demo` provisional | `feat(studio): latex generator…` |
-| T4 | S8, S9, S10 | Política LaTeX + sandbox de contenedor + pruebas de seguridad | `feat(security): latex policy…` |
-| T5 | S3, S4, S11 | Pipeline de artefactos, manifiesto y CLI | `feat(cli): convert/brands/doctor…` |
-| T6 | S11 | 10 fixtures, integración y verificación completa | `test: fixtures and e2e…` |
+| T1 | S1, S2, S10 | Andamiaje, `AGENTS.md`, plan renombrado, ADR-001/002/003 | `9027d75` |
+| T2 | S4, S7, S13 | Perfiles `invering`/`demo`, plantilla, activos, ADR-004 | `39354ed` |
+| T3 | S5, S6 | Modelo tipado + parser determinista MD/TXT | `107e97b` |
+| T4 | S5, S4 | Generador LaTeX escapado + render estricto de plantilla | `1c19467` |
+| T5 | S8, S9, S10 | Política LaTeX, sandbox de contenedor, artefactos | `d5acca1` |
+| T6 | S3, S11 | Pipeline de trabajos, 11 fixtures, integración y seguridad | `a38d9d6` |
+| T7 | S3, S12 | CLI `convert`/`brands`/`doctor` | `1395fba` |
+
+## Slices (unidad de revisión)
+
+La feature se entregó en **7 commits secuenciales** sobre `feat/h1-converter-cli`,
+ordenados por dependencia y agrupados por comportamiento (implementación y sus
+pruebas en el mismo commit):
+
+```text
+9027d75 docs(h0)      plan, AGENTS.md, ADRs, arquitectura, amenazas
+39354ed feat(branding) perfiles + plantilla + activos INVERING verificados
+107e97b feat(studio)  modelo tipado + parser
+1c19467 feat(studio)  LaTeX escapado + plantilla estricta
+d5acca1 feat(security) política LaTeX + sandbox + artefactos
+a38d9d6 feat(studio)  pipeline + fixtures + integración/seguridad
+1395fba feat(cli)     convert/brands/doctor
+```
+
+El total supera la guía de ~400 líneas por commit porque es el arranque del
+repositorio (andamiaje + documentación incluidos). Los cortes son por
+comportamiento verificable, no por cantidad de archivos. **Push y PR quedan como
+decisión del usuario**; no se publicó nada.
+
 
 ## Log
 
