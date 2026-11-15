@@ -463,6 +463,33 @@ class ApiIntegrationTests(WebServerHarness, unittest.TestCase):
         missing_pdf = self.call("GET", f"/api/jobs/{first_id}/artifacts/pdf")
         self.assertEqual(missing_pdf.status, 404)
 
+    def test_job_validation_errors_do_not_create_jobs(self) -> None:
+        csrf = self.api_login()
+        document = self.upload("report.md", b"# Report\n", csrf).json()
+        common = {"document_id": document["document_id"], "brand": "invering"}
+        cases = (
+            ({**common, "formats": []}, 400, "unsupported_format", "formats must be a nonempty subset of tex and pdf"),
+            ({**common, "formats": ["tex", "tex"]}, 400, "unsupported_format", "formats must not contain duplicates"),
+            ({**common, "formats": ["docx"]}, 400, "unsupported_format", "formats must be a nonempty subset of tex and pdf"),
+            ({**common, "formats": ["tex"], "brand": "absent"}, 400, "branding_profile_not_found", "brand profile 'absent' was not found"),
+            ({"document_id": "missing", "brand": "invering", "formats": ["tex"]}, 404, "document_not_found", "document not found"),
+        )
+        for payload, status, code, message in cases:
+            with self.subTest(code=code, payload=payload):
+                response = self.call(
+                    "POST",
+                    "/api/jobs",
+                    data=json.dumps(payload).encode(),
+                    headers={"Content-Type": "application/json", CSRF_HEADER: csrf},
+                )
+                self.assertEqual(response.status, status, response.text)
+                self.assertEqual(
+                    response.json(),
+                    {"ok": False, "error": {"code": code, "message": message}},
+                )
+        with closing(connect(self.db_path)) as connection:
+            self.assertEqual(Repository(connection).list_jobs(), [])
+
     def test_foreign_documents_jobs_and_artifacts_are_not_found(self) -> None:
         csrf = self.api_login()
         document = self.upload("private.md", b"# Private\n", csrf).json()

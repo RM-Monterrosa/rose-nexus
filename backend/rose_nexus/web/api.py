@@ -15,8 +15,8 @@ from pydantic import BaseModel
 
 from ..core.config import Settings
 from ..core.errors import RoseNexusError
-from ..studio.branding import load_profile
 from . import auth
+from .document_service import _submit_job
 from .http_security import (
     ApiProblem,
     clear_session_cookie,
@@ -122,38 +122,21 @@ def submit_conversion_job(
     brand: str,
     formats: list[str],
 ) -> str:
-    """Validate ownership, formats and branding before persist-and-submit."""
+    """Adapt shared submission validation to the existing HTTP error contract."""
 
-    document = repository.get_document(document_id, user.id)
-    if document is None:
-        raise ApiProblem(404, "document_not_found", "document not found")
-    if not formats or any(name not in {"tex", "pdf"} for name in formats):
-        raise ApiProblem(400, "unsupported_format", "formats must be a nonempty subset of tex and pdf")
-    if len(set(formats)) != len(formats):
-        raise ApiProblem(400, "unsupported_format", "formats must not contain duplicates")
     try:
-        load_profile(settings.branding_dir, brand)
-    except RoseNexusError as error:
-        raise ApiProblem(400, error.code, error.message) from error
-    job_id = uuid.uuid4().hex
-    repository.create_job(
-        Job(
-            id=job_id,
+        return _submit_job(
+            repository=repository,
+            runner=runner,
+            settings=settings,
+            user=user,
             document_id=document_id,
-            user_id=user.id,
-            status="pending",
             brand=brand,
-            formats=json.dumps(formats, separators=(",", ":")),
-            error_code=None,
-            error_message=None,
-            created_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            started_at=None,
-            finished_at=None,
-            duration_ms=None,
+            formats=formats,
         )
-    )
-    runner.submit(job_id)
-    return job_id
+    except RoseNexusError as error:
+        status = 404 if error.code == "document_not_found" else 400
+        raise ApiProblem(status, error.code, error.message) from error
 
 
 def _artifact_payload(job_id: str, artifact: Artifact) -> dict[str, object]:
