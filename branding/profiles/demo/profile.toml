@@ -1,0 +1,27 @@
+# Perfil PROVISIONAL de Rose Nexus.
+# Paleta rosa + azul indicada por el usuario como dirección de producto.
+# No es identidad corporativa, no usa logos de terceros y declara su carácter
+# provisional en el PDF y en el manifiesto del trabajo.
+name = "demo"
+version = "0.1.0"
+display_name = "Rose Nexus (provisional)"
+provisional = true
+provisional_note = "Paleta provisional rosa/azul elegida por el agente; no es branding corporativo."
+template = "document.tex.tmpl"
+
+accent = "#B03A5B"   # rosa
+support = "#1F4E79"  # azul
+ink = "#14202B"
+paper = "#FFFFFF"
+
+page_size = "A4"
+cover_style = "title-rule"
+
+logo = ""
+logo_width_fraction = 0.32
+
+fonts_verified = false
+footer_left = "Rose Nexus"
+footer_center = "PROVISIONAL"
+footer_right = ""
+watermark = ""

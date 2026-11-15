@@ -1,0 +1,33 @@
+# INVERING — perfil corporativo verificado.
+# Fuente: https://forgejo.invering.com/INVERING/BRANDING.git
+# Commit inspeccionado: bd5dd8aff92e3ffdb43cc99b78f3d8da1f6b8cb2 (v4.1-logo-greens)
+# Reglas del BRAND-LOCK: sin acentos cálidos, sin estética "SaaS azul".
+name = "invering"
+version = "4.1.0"
+display_name = "INVERING"
+provisional = false
+source = "bd5dd8aff92e3ffdb43cc99b78f3d8da1f6b8cb2"
+template = "document.tex.tmpl"
+
+accent = "#006838"   # Verde Profundo: marca e infraestructura
+support = "#8DC63F"  # Verde Luz: señal/dato
+ink = "#05130F"      # Bosque Digital
+paper = "#F2F5EF"    # Hueso
+
+page_size = "A4"
+cover_style = "logo-rule"
+
+logo = "assets/invering/logo-official.png"
+logo_width_fraction = 0.34
+
+# Declaradas por el sistema de marca; NO verificadas en el host ni con licencia
+# comprobada. Mientras fonts_verified sea false, la plantilla no las aplica.
+font_display = "Archivo"
+font_body = "IBM Plex Sans"
+font_mono = "IBM Plex Mono"
+fonts_verified = false
+
+footer_left = "INVERING"
+footer_center = "Del voltaje al dato"
+footer_right = ""
+watermark = ""

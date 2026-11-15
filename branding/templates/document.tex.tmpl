@@ -1,0 +1,33 @@
+{{header_comment}}
+% Rose Nexus — plantilla de documento versionada.
+% Generado con perfil de marca; no editar la salida, editar esta plantilla.
+\documentclass[11pt,{{page_size}}]{article}
+
+\usepackage{geometry}
+\geometry{margin=2.5cm,top=2.8cm,bottom=2.8cm}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{xcolor}
+{{colors}}
+{{font_setup}}
+{{watermark_setup}}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+
+{{document_info}}
+
+\pagestyle{fancy}
+\fancyhf{}
+{{footer_setup}}
+\renewcommand{\headrulewidth}{0pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.6em}
+\setlength{\emergencystretch}{2em}
+
+\begin{document}
+
+{{cover}}
+{{logo_block}}
+{{body}}
+\end{document}
