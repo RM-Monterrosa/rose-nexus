@@ -34,6 +34,13 @@ def _text(value: object) -> str:
     return value if isinstance(value, str) else ""
 
 
+def _with_llm_navigation(content: str) -> str:
+    """Add the experimental destination without changing the common HTML renderer."""
+
+    link = '<a href="/app/llm">Experimental: consultar al modelo</a>'
+    return content.replace("</nav>", f"{link}</nav>", 1)
+
+
 def create_ui_router() -> APIRouter:
     """Create browser routes resolved against the current application state."""
 
@@ -99,6 +106,7 @@ def create_ui_router() -> APIRouter:
             request.app.state.settings.max_input_bytes,
             bool(request.app.state.settings.sandbox_image),
         )
+        content = _with_llm_navigation(content)
         return HTMLResponse(content, headers={"Cache-Control": "no-store"})
 
     @router.post("/app/upload", include_in_schema=False)

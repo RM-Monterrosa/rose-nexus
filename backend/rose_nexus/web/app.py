@@ -10,6 +10,8 @@ from typing import Mapping
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 
+from ..ai.client import InferenceClient
+from ..ai.settings import InferenceSettings
 from ..core.config import Settings
 from .api import create_api_router
 from .db import connect, migrate
@@ -20,6 +22,7 @@ from .http_security import (
     json_problem,
 )
 from .jobs import JobRunner
+from .llm_screen import create_llm_router
 from .repository import Repository
 from .storage import Storage
 from .ui import create_ui_router
@@ -42,6 +45,8 @@ def create_app(
     app.state.settings = settings
     app.state.secret = secret
     app.state.secure_cookies = secure_cookies
+    # One content-private client is shared by every request in this application.
+    app.state.inference_client = InferenceClient(InferenceSettings.from_env())
     # The imported class is intentionally instantiated once per application.
     from .auth import LoginThrottle
 
@@ -65,6 +70,7 @@ def create_app(
 
     app.include_router(create_api_router())
     app.include_router(create_ui_router())
+    app.include_router(create_llm_router())
 
     @app.on_event("shutdown")
     def stop_runner() -> None:
