@@ -1,0 +1,5 @@
+Texto plano de prueba sin Markdown.
+
+El asterisco *no* debe interpretarse como énfasis y la almohadilla # tampoco como encabezado.
+
+Los símbolos $ & % # _ { } ~ ^ \ deben aparecer escapados en el LaTeX.
