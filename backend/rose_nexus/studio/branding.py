@@ -293,10 +293,30 @@ def _build(data: Mapping[str, Any], root: pathlib.Path, profile_name: str) -> Br
     )
 
 
+def _safe_profile_name(name: str) -> str:
+    """Reject profile names that could escape ``profiles/<name>``."""
+
+    if (
+        not name
+        or "/" in name
+        or "\\" in name
+        or "\x00" in name
+        or ".." in name
+        or name in {".", ".."}
+    ):
+        raise BrandingError(
+            "brand profile names must be a single safe directory name",
+            code="branding_unsafe_path",
+            detail=name,
+        )
+    return name
+
+
 def load_profile(branding_root: pathlib.Path | str, profile_name: str) -> BrandProfile:
     """Load and validate one profile from ``branding_root/profiles/<name>``."""
 
     root = pathlib.Path(branding_root)
+    profile_name = _safe_profile_name(profile_name)
     profile_path = root / "profiles" / profile_name / "profile.toml"
     if not profile_path.is_file():
         raise BrandingError(

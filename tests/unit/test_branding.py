@@ -203,6 +203,18 @@ class SchemaValidationTests(TempBrandingRoot):
         self.assertEqual(profile.font_body, "IBM Plex Sans")
         self.assertFalse(profile.fonts_verified)
 
+    def test_profile_name_cannot_escape_branding_root(self):
+        outside = self.root.parent / (self.root.name + "-outside")
+        outside.mkdir()
+        self.addCleanup(outside.rmdir)
+        profile_name = "../../" + outside.name
+        profile_path = outside / "profile.toml"
+        profile_path.write_text(toml_text(dict(BASE_PROFILE, name=profile_name)), encoding="utf-8")
+        self.addCleanup(profile_path.unlink)
+        with self.assertRaises(BrandingError) as caught:
+            load_profile(self.root, profile_name)
+        self.assertEqual(caught.exception.code, "branding_unsafe_path")
+
     def test_missing_branding_root_is_reported(self):
         with self.assertRaises(BrandingError) as caught:
             list_profiles(self.root / "no-existe")
