@@ -47,13 +47,20 @@ Fuera de alcance por decisión explícita del usuario:
 ## 3. Estructura
 
 ```text
-backend/rose_nexus/    paquete Python (core, studio, security, storage, cli)
-branding/              perfiles versionados, plantillas y assets
-docs/                  plan, arquitectura, amenazas y ADRs
+backend/rose_nexus/    core (errores, config) · studio (motor de documentos) ·
+                       security (política + sandbox) · storage (artefactos) ·
+                       web (FastAPI + UI) · ai (inferencia local) · cli.py
+branding/              perfiles versionados, plantillas y assets con hash
+deploy/                Dockerfile de la imagen TeX y variables de ejemplo
+docs/                  plan, arquitectura, amenazas, ADRs, inferencia y handoffs
 odd/tasks/             documentos de feature de Organic Driven Development
-tests/                 unit, integration, security y fixtures
-scripts/               verificación reproducible
+tests/                 unit, integration, security, web, ai y fixtures
+scripts/               verificación reproducible y build de la imagen TeX
 ```
+
+Continuidad entre sesiones: leer `docs/handoffs/` (el más reciente primero).
+El handoff `H3-to-H4.md` resume estado, comandos, benchmarks, riesgos y alcance
+recomendado.
 
 ## 4. Comandos canónicos
 
