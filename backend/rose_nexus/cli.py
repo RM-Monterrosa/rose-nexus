@@ -7,12 +7,16 @@ import dataclasses
 import json
 import pathlib
 import platform
+import statistics
 import sys
 from typing import Any
 
 from . import __version__
+from .ai.client import InferenceClient
+from .ai.errors import InferenceHTTPError, InferenceProtocolError, InferenceUnavailable
+from .ai.settings import InferenceSettings
 from .core.config import ALLOWED_RUNTIMES, Settings
-from .core.errors import RoseNexusError, SandboxUnavailableError
+from .core.errors import InputValidationError, RoseNexusError, SandboxUnavailableError
 from .security.sandbox import SandboxLimits, detect_runtime, validate_image_reference
 from .studio.branding import list_profiles
 from .studio.pipeline import ConversionResult, convert_document
@@ -50,7 +54,33 @@ def _parser() -> argparse.ArgumentParser:
 
     doctor = commands.add_parser("doctor", help="report conversion and sandbox readiness")
     doctor.add_argument("--json", action="store_true", help="emit a JSON result")
+
+    llm = commands.add_parser("llm", help="diagnose and exercise local inference")
+    llm_commands = llm.add_subparsers(dest="llm_command", required=True)
+
+    health = llm_commands.add_parser("health", help="check endpoint and model availability")
+    _add_llm_options(health)
+
+    ask = llm_commands.add_parser("ask", help="request one local chat completion")
+    _add_llm_options(ask)
+    ask.add_argument("--prompt", help="user prompt text")
+    ask.add_argument("--prompt-file", type=pathlib.Path, help="UTF-8 user prompt file")
+    ask.add_argument("--system", default="You are a helpful assistant.", help="system prompt")
+    ask.add_argument("--max-tokens", type=int, help="maximum generated tokens")
+    ask.add_argument("--temperature", type=float, help="sampling temperature")
+
+    bench = llm_commands.add_parser("bench", help="measure repeated local completions")
+    _add_llm_options(bench)
+    bench.add_argument("--runs", type=int, default=3, help="number of runs, from 1 to 20")
+    bench.add_argument("--prompt", default="Reply with a short benchmark response.")
     return parser
+
+
+def _add_llm_options(command: argparse.ArgumentParser) -> None:
+    """Add shared local-inference overrides and output selection."""
+    command.add_argument("--endpoint", help="override the OpenAI-compatible endpoint")
+    command.add_argument("--model", help="override the configured model name")
+    command.add_argument("--json", action="store_true", help="emit a JSON result")
 
 
 def _print_json(payload: dict[str, Any]) -> None:
@@ -170,6 +200,176 @@ def _doctor(args: argparse.Namespace, settings: Settings) -> None:
         print(f"branding error: {branding_error}")
 
 
+def _llm_settings(args: argparse.Namespace) -> InferenceSettings:
+    """Build inference settings with explicit CLI overrides taking precedence."""
+    settings = InferenceSettings.from_env()
+    overrides: dict[str, Any] = {}
+    if args.endpoint is not None:
+        overrides["endpoint"] = args.endpoint
+    if args.model is not None:
+        overrides["model"] = args.model
+    return dataclasses.replace(settings, **overrides)
+
+
+def _llm_health(args: argparse.Namespace) -> int:
+    """Report endpoint diagnostics without requiring inference to be enabled."""
+    settings = _llm_settings(args)
+    status = InferenceClient(settings).health()
+    healthy = status.available and status.model_present
+    if args.json:
+        _print_json(
+            {
+                "ok": healthy,
+                "health": {
+                    **dataclasses.asdict(status),
+                    "model": settings.model,
+                },
+            }
+        )
+    else:
+        print(
+            f"available={str(status.available).lower()} "
+            f"model_present={str(status.model_present).lower()} "
+            f"model={settings.model} latency_ms={status.latency_ms:.2f}"
+        )
+    if not healthy:
+        print(
+            "error: inference_model_unavailable: configured model is not present",
+            file=sys.stderr,
+        )
+        return 4
+    return 0
+
+
+def _ask_prompt(args: argparse.Namespace) -> str:
+    """Read exactly one bounded UTF-8 prompt without exposing its contents."""
+    if (args.prompt is None) == (args.prompt_file is None):
+        raise InputValidationError(
+            "exactly one of --prompt or --prompt-file is required"
+        )
+    if args.prompt is not None:
+        return args.prompt
+    try:
+        with args.prompt_file.open("rb") as prompt_file:
+            raw_prompt = prompt_file.read(65537)
+    except OSError as error:
+        raise InputValidationError("prompt file could not be read") from error
+    if len(raw_prompt) > 65536:
+        raise InputValidationError(
+            "prompt file exceeds the 65536-byte limit", code="prompt_too_large"
+        )
+    try:
+        return raw_prompt.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as error:
+        raise InputValidationError("prompt file must contain valid UTF-8") from error
+
+
+def _llm_ask(args: argparse.Namespace) -> None:
+    """Print one answer and its content-free inference measurements."""
+    prompt = _ask_prompt(args)
+    settings = _llm_settings(args)
+    overrides: dict[str, Any] = {}
+    if args.max_tokens is not None:
+        overrides["max_tokens"] = args.max_tokens
+    if args.temperature is not None:
+        overrides["temperature"] = args.temperature
+    settings = dataclasses.replace(settings, **overrides)
+    answer = InferenceClient(settings).ask(args.system, prompt)
+    if args.json:
+        _print_json(
+            {
+                "ok": True,
+                "answer": answer.text,
+                "metrics": dataclasses.asdict(answer.metrics),
+            }
+        )
+        return
+    print(answer.text)
+    print(f"metrics: {answer.metrics.as_log()}", file=sys.stderr)
+
+
+def _llm_bench(args: argparse.Namespace) -> int:
+    """Measure repeated completions and summarize successful measurements."""
+    if not 1 <= args.runs <= 20:
+        raise InputValidationError("--runs must be between 1 and 20")
+    client = InferenceClient(_llm_settings(args))
+    runs: list[dict[str, Any]] = []
+    failures = 0
+    for run_number in range(1, args.runs + 1):
+        try:
+            answer = client.ask("You are a helpful assistant.", args.prompt)
+        except InferenceUnavailable:
+            raise
+        except (InferenceProtocolError, InferenceHTTPError) as error:
+            failures += 1
+            runs.append(
+                {
+                    "run": run_number,
+                    "wall_ms": None,
+                    "prompt_tokens": None,
+                    "completion_tokens": None,
+                    "tokens_per_second": None,
+                    "finish_reason": None,
+                    "error": error.code,
+                }
+            )
+            continue
+        metrics = answer.metrics
+        runs.append(
+            {
+                "run": run_number,
+                "wall_ms": metrics.latency_ms,
+                "prompt_tokens": metrics.prompt_tokens,
+                "completion_tokens": metrics.completion_tokens,
+                "tokens_per_second": metrics.tokens_per_second,
+                "finish_reason": metrics.finish_reason,
+                "error": None,
+            }
+        )
+
+    successful_runs = [run for run in runs if run["error"] is None]
+    wall_times = [run["wall_ms"] for run in successful_runs]
+    speeds = [
+        run["tokens_per_second"]
+        for run in successful_runs
+        if run["tokens_per_second"] is not None
+    ]
+    summary = {
+        "runs": args.runs,
+        "failures": failures,
+        "wall_median_ms": statistics.median(wall_times) if wall_times else None,
+        "tok_s_median": statistics.median(speeds) if speeds else None,
+    }
+    if args.json:
+        _print_json({"ok": failures == 0, "runs": runs, "summary": summary})
+    else:
+        print("run wall_ms prompt_tokens completion_tokens tok_s finish_reason")
+        for run in runs:
+            print(
+                f"{run['run']} "
+                f"{_bench_number(run['wall_ms'])} "
+                f"{_bench_number(run['prompt_tokens'])} "
+                f"{_bench_number(run['completion_tokens'])} "
+                f"{_bench_number(run['tokens_per_second'])} "
+                f"{run['finish_reason'] or '-'}"
+            )
+        print(
+            f"summary: runs={summary['runs']} failures={summary['failures']} "
+            f"wall_median_ms={_bench_number(summary['wall_median_ms'])} "
+            f"tok_s_median={_bench_number(summary['tok_s_median'])}"
+        )
+    return 5 if failures else 0
+
+
+def _bench_number(value: object) -> str:
+    """Format numeric table cells without inventing unavailable measurements."""
+    if value is None:
+        return "-"
+    if isinstance(value, int):
+        return str(value)
+    return f"{float(value):.2f}"  # type: ignore[arg-type]
+
+
 def _report_error(error: RoseNexusError, *, json_output: bool) -> int:
     print(f"error: {error.code}: {error.message}", file=sys.stderr)
     if error.detail:
@@ -188,6 +388,14 @@ def main(argv: list[str] | None = None) -> int:
 
     args = _parser().parse_args(argv)
     try:
+        if args.command == "llm":
+            if args.llm_command == "health":
+                return _llm_health(args)
+            if args.llm_command == "ask":
+                _llm_ask(args)
+                return 0
+            return _llm_bench(args)
+
         settings = Settings.from_env()
         if args.command == "convert":
             _convert(args, settings)
@@ -198,7 +406,10 @@ def main(argv: list[str] | None = None) -> int:
         else:  # pragma: no cover - argparse makes this unreachable
             raise AssertionError(f"unsupported command: {args.command}")
     except RoseNexusError as error:
-        return _report_error(error, json_output=bool(getattr(args, "json", False)))
+        json_output = bool(getattr(args, "json", False))
+        if args.command == "llm" and args.llm_command == "health":
+            json_output = False
+        return _report_error(error, json_output=json_output)
     return 0
 
 
