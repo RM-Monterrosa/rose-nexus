@@ -544,6 +544,10 @@ def convert_document(
             scratch.mkdir(parents=True, exist_ok=True)
             try:
                 shutil.copy2(job.work / "document.tex", scratch / "document.tex")
+                # The .tex references assets/<file>; the sandbox must see them too.
+                assets_dir = job.work / "assets"
+                if assets_dir.is_dir():
+                    shutil.copytree(assets_dir, scratch / "assets")
                 compiled = compile_document(
                     scratch / "document.tex",
                     image=configuration.sandbox_image,
@@ -588,6 +592,12 @@ def convert_document(
         root = finalize_job(job, manifest)
     except BaseException:
         _abort(job)
+        # Removing an empty directory never deletes user content, and a refused
+        # job must not leave an empty output root behind.
+        try:
+            configuration.output_dir.rmdir()
+        except OSError:
+            pass
         raise
 
     return ConversionResult(

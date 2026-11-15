@@ -15,6 +15,8 @@ import unittest
 from unittest import mock
 
 from rose_nexus.core.config import Settings
+from rose_nexus.core.errors import CompileError
+from rose_nexus.security.sandbox import CompileResult
 from rose_nexus.storage.artifacts import sha256_file
 from rose_nexus.studio.pipeline import convert_document
 
@@ -27,6 +29,9 @@ STUB_TEMPLATE = """#!/usr/bin/env python3
 import json, os, sys
 with open(os.environ["STUB_RECORD"], "a", encoding="utf-8") as handle:
     handle.write(json.dumps(sys.argv[1:]) + "\\n")
+if os.environ.get("STUB_FAIL"):
+    print("! LaTeX Error: boom", file=sys.stderr)
+    sys.exit(1)
 for argument in sys.argv[1:]:
     if argument.startswith("--mount=") and "dst=/out" in argument:
         out = argument.split("src=")[1].split(",")[0]
@@ -101,6 +106,40 @@ class PdfPipelineTests(unittest.TestCase):
         self.assertEqual(records["document.pdf"]["kind"], "pdf")
         self.assertEqual(records["document.pdf"]["sha256"], sha256_file(result.pdf_path))
         self.assertGreater(records["document.pdf"]["bytes"], 0)
+
+    def test_pdf_scratch_contains_referenced_assets(self):
+        (self.base / "pixel.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        source = self.base / "image.md"
+        source.write_text("![pixel](pixel.png)\n", encoding="utf-8")
+        observed = []
+
+        def fake_compile(tex_path, **kwargs):
+            observed.append((tex_path.parent / "assets" / "01-pixel.png").is_file())
+            output = tex_path.parent / "pdf"
+            output.mkdir()
+            pdf = output / "document.pdf"
+            pdf.write_bytes(b"%PDF-1.4 stub")
+            return CompileResult(pdf_path=pdf)
+
+        with mock.patch(
+            "rose_nexus.studio.pipeline.compile_document", side_effect=fake_compile
+        ):
+            convert_document(
+                source,
+                brand="demo",
+                formats=("tex", "pdf"),
+                settings=self.settings(),
+            )
+        self.assertEqual(observed, [True], "the sandbox input must contain the referenced assets")
+
+    def test_failed_compilation_leaves_no_output_directory(self):
+        os.environ["STUB_FAIL"] = "1"
+        try:
+            with self.assertRaises(CompileError):
+                self.convert()
+        finally:
+            os.environ.pop("STUB_FAIL", None)
+        self.assertFalse(self.out.exists(), "a failed job must not leave an empty output root")
 
     def test_compilation_goes_through_two_hardened_container_runs(self):
         self.convert()
