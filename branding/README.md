@@ -15,8 +15,8 @@ documentación y assets; los activos usados se copian con SHA-256 registrado.
 
 | Perfil | Estado | Paleta | Nota |
 |---|---|---|---|
-| `invering` | corporativo, no provisional | verdes INVERING | Requiere `source` con commit. |
-| `demo` | **provisional** | rosa + azul | Dirección de producto, sin pretensión corporativa. |
+| `invering` | corporativo, no provisional | verdes INVERING | **Predeterminado**; exige `source` con commit. |
+| `demo` | **provisional** | rosa + azul | Solo con `--brand demo`; sin pretensión corporativa. |
 
 Reglas:
 

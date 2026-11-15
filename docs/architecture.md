@@ -16,6 +16,10 @@ entrada .md/.txt
 
 Sin LLM en ningún paso. Sin red. Sin estado global.
 
+**Identidad por defecto:** perfil `invering` (tokens verificados del repo
+BRANDING, commit `bd5dd8a`). El perfil `demo` es provisional y solo se activa
+con `--brand demo`. Ver `docs/decisions/ADR-004-branding-source.md`.
+
 ## Módulos
 
 | Módulo | Responsabilidad |

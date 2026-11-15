@@ -98,8 +98,17 @@ class FixtureConversionTests(ConvertCase):
 
 
 class BrandingIntegrationTests(ConvertCase):
+    def test_default_brand_is_the_verified_invering_identity(self):
+        result = self.convert("01-headings.md", brand=None)
+        self.assertEqual(result.manifest["brand"]["name"], "invering")
+        self.assertFalse(result.manifest["brand"]["provisional"])
+        self.assertEqual(
+            result.manifest["brand"]["source"],
+            "bd5dd8aff92e3ffdb43cc99b78f3d8da1f6b8cb2",
+        )
+
     def test_manifest_records_provisional_branding(self):
-        result = self.convert("02-emphasis.md")
+        result = self.convert("02-emphasis.md", brand="demo")
         manifest = result.manifest
         self.assertEqual(manifest["schema_version"], 1)
         self.assertEqual(manifest["status"], "tex-only")

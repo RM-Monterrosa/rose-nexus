@@ -31,7 +31,9 @@ fijada por digest. El flujo no compila en el host ni simula aislamiento.
 PYTHONPATH=backend python3 -m rose_nexus.cli doctor
 PYTHONPATH=backend python3 -m rose_nexus.cli brands
 PYTHONPATH=backend python3 -m rose_nexus.cli convert tests/fixtures/markdown/01-headings.md \
-  --brand demo --out build
+  --out build            # identidad canónica: invering
+PYTHONPATH=backend python3 -m rose_nexus.cli convert tests/fixtures/markdown/01-headings.md \
+  --brand demo --out build   # perfil PROVISIONAL rosa/azul
 ```
 
 Instalación local opcional (entorno virtual, nunca global):
@@ -39,7 +41,8 @@ Instalación local opcional (entorno virtual, nunca global):
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -e .
-rose convert documento.md --brand demo --out build
+rose convert documento.md --out build
+rose convert documento.md --brand demo --out build   # provisional
 ```
 
 ## Verificación

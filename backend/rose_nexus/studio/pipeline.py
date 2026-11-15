@@ -480,7 +480,7 @@ def convert_document(
             detail=", ".join(unknown_formats),
         )
 
-    brand_name = brand if brand is not None else document.meta.brand or "demo"
+    brand_name = brand if brand is not None else document.meta.brand or "invering"
     branding_root = configuration.branding_dir
     profile = load_profile(branding_root, brand_name)
     resolved_title = _document_title(document, source_path, title)

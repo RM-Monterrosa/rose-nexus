@@ -124,3 +124,12 @@ decisión del usuario**; no se publicó nada.
   ejecutó ningún script del repositorio de branding. No se inventó ningún token:
   los verdes salen de `colors/palette.md`; el rosa/azul es placeholder explícito
   del perfil provisional.
+- **L6** — El usuario decidió que la identidad canónica de los PDF de Rose
+  Nexus es **`invering`** (verdes corporativos), no rosa+azul. Implementado con
+  prueba previa (`test_default_brand_is_the_verified_invering_identity`) y
+  registrado en `ADR-004`, `AGENTS.md` §6, `docs/architecture.md`, `README.md` y
+  `branding/README.md`. `demo` sigue disponible solo con `--brand demo`.
+- **L7** — El usuario eligió revisar la rebanada de seguridad
+  (`d5acca1`: política LaTeX + sandbox + artefactos) en una rama apilada, porque
+  el candidato completo (6.049 líneas) excede el presupuesto de contexto del
+  revisor nativo (`lens_context_budget_exceeded`, sin autoridad creada).

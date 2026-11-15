@@ -1,6 +1,6 @@
 # ADR-004 — Fuente de branding y convivencia con la identidad de producto
 
-- **Estado:** aceptado; **una decisión pendiente del usuario** (ver «Pregunta abierta»)
+- **Estado:** aceptado y resuelto (identidad canónica decidida)
 - **Fecha:** 2026-11-15
 - **Contexto:** el usuario indicó el repositorio real de branding y adelantó una
   dirección visual para Rose Nexus.
@@ -50,8 +50,8 @@ perfiles y la decisión queda para la persona.
 
 | Perfil | Naturaleza | Paleta | Uso |
 |---|---|---|---|
-| `invering` | No provisional, con `source` = commit `bd5dd8a` | Verdes + Hueso + Bosque | Documentos corporativos |
-| `demo` | **Provisional**, sin pretensión corporativa | Rosa (`#B03A5B`) + azul (`#1F4E79`) | Identidad propia de Rose Nexus, si se aprueba |
+| `invering` | No provisional, con `source` = commit `bd5dd8a` | Verdes + Hueso + Bosque | **Predeterminado**; documentos corporativos |
+| `demo` | **Provisional**, sin pretensión corporativa | Rosa (`#B03A5B`) + azul (`#1F4E79`) | Solo con `--brand demo` |
 
 - El perfil `invering` es la única vía legítima para afirmar marca corporativa.
 - El perfil `demo` declara `provisional = true` en el `.tex` y en el pie de
@@ -62,11 +62,20 @@ perfiles y la decisión queda para la persona.
   Se copian como PNG porque SVG requiere `svg`/`shell-escape`, prohibido por
   ADR-003.
 
-## Pregunta abierta
+## Decisión del usuario (2026-11-15)
 
-¿Qué identidad gobierna los PDF de Rose Nexus: `invering` (verdes
-corporativos) o `demo` (rosa+azul, provisional)? Hasta que se responda, el
-default de la CLI es `demo` y la respuesta se registra como nuevo ADR.
+**`invering` es la identidad canónica** de los documentos de Rose Nexus. Es el
+perfil predeterminado del pipeline y de la CLI. El perfil `demo` (rosa + azul)
+queda como experimento **provisional** disponible solo con `--brand demo`, y su
+salida sigue declarándose PROVISIONAL en el `.tex`, la portada, el pie y el
+manifiesto.
+
+Consecuencias:
+
+- El default de `convert_document` y de `rose convert` es `invering`.
+- Los PDF corporativos llevan logo oficial, verdes del lock y commit de origen.
+- Retomar rosa+azul como identidad principal requiere un ADR nuevo: sigue
+  chocando con `BRAND-LOCK.md`.
 
 ## Pendientes
 

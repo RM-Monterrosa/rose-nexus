@@ -97,10 +97,14 @@ PYTHONPATH=backend python3 -m rose_nexus.cli convert tests/fixtures/markdown/01-
   de marca y desaconseja la estética «SaaS azul». Consecuencia: **rosa + azul
   nunca se aplica a marca INVERING**; ese par solo puede vivir en el perfil
   provisional `demo`.
-- **Dirección registrada del producto:** la identidad de Rose Nexus «puede que
-  sea en una combinación de rosa y de azul». Se implementa como perfil `demo`
-  con `provisional = true`, sin pretensión corporativa, hasta que el usuario
-  decida la identidad canónica.
+- **Identidad canónica (decidida por el usuario el 2026-11-15): `invering`.**
+  Es el perfil predeterminado de la CLI y de la API: verdes verificados del repo
+  de branding, logo oficial y commit de origen fijado. `demo` (rosa + azul) sigue
+  existiendo como perfil **provisional** y solo se usa con `--brand demo`; nunca
+  representa a INVERING.
+- Dirección de producto registrada: la idea de «rosa y azul» para Rose Nexus
+  quedó como experimento provisional, no como identidad de los documentos
+  corporativos. Si se retoma, requiere un ADR nuevo.
 - Perfiles: `invering` (no provisional; exige `source` con commit exacto) y
   `demo` (provisional). **Prohibido inventar** logos, paletas o tipografías
   fuera de lo declarado en esos perfiles.
