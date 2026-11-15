@@ -33,8 +33,8 @@ if os.environ.get("STUB_FAIL"):
     print("! LaTeX Error: boom", file=sys.stderr)
     sys.exit(1)
 for argument in sys.argv[1:]:
-    if argument.startswith("--mount=") and "dst=/out" in argument:
-        out = argument.split("src=")[1].split(",")[0]
+    if ":/out:" in argument:
+        out = argument.split(":/out:")[0]
         with open(os.path.join(out, "document.pdf"), "wb") as handle:
             handle.write(b"%PDF-1.4 stub")
         with open(os.path.join(out, "document.aux"), "wb") as handle:

@@ -15,7 +15,7 @@ DOCKER con este perfil mínimo, y **no existe** camino alternativo en el host:
 | Red | `--network=none` |
 | Rootfs | `--read-only` |
 | Escritura | solo `/out` (resultados) y `--tmpfs /tmp` con `nosuid,noexec` |
-| Entrada | montaje de solo lectura en `/src` |
+| Entrada | montaje de solo lectura en `/src` con reetiquetado SELinux (`-v …:ro,Z`) |
 | Usuario | `65534:65534` (nobody) |
 | Capacidades | `--cap-drop=ALL` |
 | Escalada | `--security-opt=no-new-privileges` |
@@ -36,6 +36,12 @@ suministro. Sin imagen aprovisionada, `rose convert --format pdf` falla con
 el job: todos los paquetes van preinstalados.
 
 ## Riesgos residuales aceptados en H1
+
+- **SELinux (Fedora, Enforcing):** `--mount type=bind` no reetiqueta y el
+  contenedor no puede leer `/src` (EACCES del kernel, no de TeX). Se usa sintaxis
+  de volumen con `:Z` (etiqueta privada del contenedor). Verificado
+  empíricamente: con `:Z` compila; con `--mount` falla. Requiere que el host
+  tenga SELinux habilitado; en hosts sin SELinux el flag es inocuo.
 
 - No hay límite de bytes de salida a nivel de kernel; el timeout y el tamaño del
   tmpfs acotan el daño (`ulimit -f` se aplica vía `--ulimit=fsize`).

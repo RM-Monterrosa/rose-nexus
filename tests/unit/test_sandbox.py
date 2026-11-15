@@ -38,8 +38,8 @@ if os.environ.get("STUB_FAIL"):
         print("X" * int(os.environ["STUB_CHATTER"]), file=sys.stderr)
     sys.exit(1)
 for argument in sys.argv[1:]:
-    if argument.startswith("--mount=") and "dst=/out" in argument:
-        out = argument.split("src=")[1].split(",")[0]
+    if ":/out:" in argument:
+        out = argument.split(":/out:")[0]
         with open(os.path.join(out, "document.pdf"), "wb") as handle:
             handle.write(b"%PDF-1.4 stub")
 sys.exit(0)
@@ -104,7 +104,8 @@ class ArgvHardeningTests(SandboxTestBase):
             "--memory-swap=",
             "--cpus=",
             "noexec",
-            "dst=/src,ro",
+            ":/src:ro,Z",
+            ":/out:rw,Z",
             "-no-shell-escape",
             "-halt-on-error",
         ):
@@ -120,8 +121,8 @@ class ArgvHardeningTests(SandboxTestBase):
             limits=SandboxLimits(),
         )
         joined = " ".join(argv)
-        self.assertIn(f"src={self.src.resolve()}", joined)
-        self.assertIn(f"src={self.out.resolve()}", joined)
+        self.assertIn(f"{self.src.resolve()}:/src:ro,Z", joined, "the bind mount must relabel for SELinux")
+        self.assertIn(f"{self.out.resolve()}:/out:rw,Z", joined)
 
     def test_mount_path_with_comma_is_rejected(self):
         weird = self.root / "with,comma"

@@ -14,7 +14,13 @@ dependencies = []
 [project.optional-dependencies]
 # Optional only. The canonical test command uses the stdlib unittest runner,
 # so a fresh checkout needs no third-party package to be verified.
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "pypdf>=5.0"]
+# H2 web layer (ADR-006). Install into a project venv only, never globally.
+web = [
+    "fastapi==0.163.1",
+    "uvicorn==0.54.0",
+    "python-multipart==0.0.33",
+]
 
 [project.scripts]
 rose = "rose_nexus.cli:main"

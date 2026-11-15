@@ -125,8 +125,13 @@ def build_compile_argv(
         f"--memory-swap={limits.memory}",
         f"--cpus={limits.cpus}",
         f"--tmpfs=/tmp:rw,noexec,nosuid,size={limits.tmpfs_size},mode=1777",
-        f"--mount=type=bind,src={source},dst=/src,ro",
-        f"--mount=type=bind,src={output},dst=/out,rw",
+        # Volume syntax with :Z relabels the bind mount for SELinux. Without it
+        # (or with --mount type=bind) the container cannot read /src on an
+        # Enforcing Fedora host: the kernel denies access before xelatex runs.
+        "-v",
+        f"{source}:/src:ro,Z",
+        "-v",
+        f"{output}:/out:rw,Z",
         "--workdir=/src",
         "--env=SOURCE_DATE_EPOCH=0",
         image,
