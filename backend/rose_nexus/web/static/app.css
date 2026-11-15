@@ -1,0 +1,172 @@
+/* Rose Nexus mobile-first interface: no external assets, fonts or scripts. */
+:root {
+  color-scheme: light;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #05130f;
+  background: #f2f5ef;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+header {
+  margin-bottom: 1.5rem;
+}
+
+.brand {
+  color: #006838;
+  font-weight: 700;
+  margin: 0;
+}
+
+h1, h2 {
+  line-height: 1.2;
+}
+
+a {
+  color: #006838;
+  text-decoration-thickness: 0.12em;
+  text-underline-offset: 0.18em;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid #006838;
+  outline-offset: 3px;
+}
+
+.panel {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #b8c7bb;
+  border-radius: 0.5rem;
+  background: #ffffff;
+}
+
+label {
+  font-weight: 650;
+}
+
+input,
+button {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #718077;
+  border-radius: 0.35rem;
+  font: inherit;
+}
+
+button {
+  border-color: #006838;
+  color: #ffffff;
+  background: #006838;
+  cursor: pointer;
+}
+
+button.secondary {
+  width: auto;
+  color: #05130f;
+  background: transparent;
+}
+
+section {
+  margin: 1.5rem 0;
+}
+
+.error {
+  color: #7d1b1b;
+}
+
+.inline {
+  display: inline;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1rem;
+}
+
+dt {
+  font-weight: 700;
+}
+
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+caption {
+  text-align: left;
+  font-weight: 700;
+  padding-bottom: 0.5rem;
+}
+
+th,
+td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #d7e0d8;
+  text-align: left;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+@media (max-width: 639px) {
+  table,
+  tbody,
+  tr,
+  td {
+    display: block;
+    width: 100%;
+  }
+
+  thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  tr {
+    margin-bottom: 1rem;
+    border: 1px solid #d7e0d8;
+    border-radius: 0.35rem;
+  }
+
+  td::before {
+    content: attr(data-label);
+    display: block;
+    font-weight: 700;
+  }
+}
