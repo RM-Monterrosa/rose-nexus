@@ -157,3 +157,10 @@ decisión del usuario**; no se publicó nada.
   `blocked` con 2 defectos ya corregidos) y de las 160 pruebas automatizadas.
   Si más adelante se quiere revisar, el camino previsto es por rebanadas
   encadenadas de ~400 líneas.
+- **L10** — Imagen TeX construida y verificada: Debian bookworm-slim + TeX Live
+  2022, 649 MB, digest local `sha256:df14fa43…a970`, 7 paquetes exigidos por la
+  plantilla presentes. Montar con `--mount type=bind` falla en Fedora/SELinux
+  (`Permission denied` del kernel); se fija `-v …:/src:ro,Z` y `:/out:rw,Z`.
+  Con la imagen puesta: `rose doctor` → `ready_to_compile: true` y los 11
+  fixtures producen PDF real (22 páginas; logo e imagen embebidos; acentos
+  correctos). Cierra H1.

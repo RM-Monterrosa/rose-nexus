@@ -5,7 +5,9 @@ información entre dispositivos, con IA local opcional. El plan técnico vive en
 [`docs/production-plan.md`](docs/production-plan.md).
 
 **Estado actual:** H0 (baseline verificado) y H1 (convertidor CLI determinista
-`.md`/`.txt` → `.tex` → `.pdf`). No hay MCP, OCR, ASR, multiagentes ni frontend.
+`.md`/`.txt` → `.tex` → `.pdf`). El PDF requiere una imagen TeX fijada por digest
+(`ROSE_SANDBOX_IMAGE`); sin ella el flujo `.tex` sigue funcionando y el PDF se
+rechaza con exit 4. No hay MCP, OCR, ASR, multiagentes ni frontend.
 
 ## Qué funciona hoy
 
@@ -16,8 +18,16 @@ información entre dispositivos, con IA local opcional. El plan técnico vive en
 - Política de seguridad LaTeX y compilador en contenedor endurecido.
 - CLI `rose convert`, `rose brands`, `rose doctor`.
 
-**La salida PDF está deshabilitada** hasta que se aprovisione una imagen TeX
-fijada por digest. El flujo no compila en el host ni simula aislamiento.
+**La salida PDF** está habilitada cuando existe una imagen TeX fijada por digest:
+
+```bash
+./scripts/build-teximage.sh                      # construye y verifica la imagen
+podman image inspect rose-nexus/texlive-sandbox:0.1.0 --format '{{.Digest}}'
+export ROSE_SANDBOX_IMAGE="rose-nexus/texlive-sandbox@sha256:<digest>"
+```
+
+Sin imagen aprovisionada, `rose convert --format pdf` falla con `sandbox_unavailable`
+(exit 4) **antes** de escribir artefactos. Nunca se compila en el host.
 
 ## Requisitos
 

@@ -83,7 +83,7 @@ directorio no participa en la reproducibilidad: el `.tex` no contiene tiempos.
 | `ROSE_MAX_INPUT_BYTES` | `2097152` | Límite de entrada. |
 | `ROSE_MAX_IMAGE_BYTES` | `8388608` | Límite por imagen. |
 | `ROSE_CONTAINER_RUNTIME` | *(auto)* | `podman` o `docker`. |
-| `ROSE_SANDBOX_IMAGE` | *(vacío)* | Imagen fijada por digest. |
+| `ROSE_SANDBOX_IMAGE` | *(vacío)* | Imagen TeX fijada por digest (`repo@sha256:<64 hex>`); sin ella el PDF queda deshabilitado. Ver ADR-005. |
 | `ROSE_COMPILE_TIMEOUT_SECONDS` | `90` | Timeout de compilación. |
 | `ROSE_COMPILE_MEMORY` | `1g` | RAM del contenedor. |
 | `ROSE_COMPILE_CPUS` | `1.0` | CPUs del contenedor. |

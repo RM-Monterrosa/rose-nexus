@@ -130,6 +130,11 @@ PYTHONPATH=backend python3 -m rose_nexus.cli convert tests/fixtures/markdown/01-
 
 - Subset de Markdown documentado en `docs/architecture.md`; lo no soportado
   falla con error de validación, no se ignora en silencio.
-- PDF deshabilitado hasta aprovisionar la imagen TeX fijada por digest.
-- Sin numeración automática de páginas en tablas, sin `babel` (hyphenation
-  española) y sin índice: se agregan con pruebas cuando el sandbox compile.
+- **PDF habilitado solo con la imagen TeX fijada por digest** (ADR-005). Sin
+  `ROSE_SANDBOX_IMAGE` válida, `--format pdf` falla con exit 4 y no escribe
+  artefactos. La imagen se construye con `./scripts/build-teximage.sh`.
+- En Fedora con SELinux `Enforcing` el montaje usa `-v …:ro,Z`; con
+  `--mount type=bind` el contenedor no puede leer `/src` (ver ADR-003).
+- Los PDF no llevan `/Title` en metadatos; `babel` (partición española) e índice
+  siguen pendientes.
+- Las fuentes Archivo/IBM Plex no se empaquetan: licencias sin verificar.
