@@ -40,15 +40,28 @@
 
 ## Tasks
 
-| ID | Spec | Entrega |
-|---|---|---|
-| T1 | S1 | Imagen TeX mínima versionada + digest fijado + PDF real de los 10 fixtures |
-| T2 | S3, S6 | Esquema SQLite (usuarios, sesiones, espacios, documentos, trabajos, artefactos) + repositorios |
-| T3 | S3, S6 | Auth local: `scrypt`, cookie de sesión firmada, CSRF, expiración, rate limit mínimo |
-| T4 | S2, S3, S7 | API: subir, crear trabajo, estado, descargar `.pdf`/`.tex`/original, biblioteca |
-| T5 | S2, S6 | UI responsive: login, subida, detalle de trabajo con progreso, descargas |
-| T6 | S4, S5, S6 | Pruebas: integración con uvicorn real + `urllib`, aislamiento entre espacios, CSRF, traversal, límites |
-| T7 | S8 | `push` de ramas y PR con descripción y evidencia |
+| ID | Spec | Entrega | Estado | Commit |
+|---|---|---|---|---|
+| T1 | S1 | Imagen TeX mínima, digest fijado, 11 fixtures a PDF real | ✅ | `9935ead` (rama H1) |
+| T2 | S3, S6 | Esquema SQLite + repositorios con scoping por dueño | ✅ | `e131423` |
+| T3 | S3, S6 | Auth local: `scrypt`, cookie firmada, CSRF, throttle | ✅ | `e131423` |
+| T4 | S2, S3, S7 | API: subir, trabajo, estado, descargas, biblioteca | ✅ | `189ea1e` |
+| T5 | S2, S6 | UI responsive: login, subida, biblioteca, detalle | ✅ | `189ea1e` |
+| T6 | S4, S5, S6 | Pruebas: uvicorn real, aislamiento, CSRF, traversal | ✅ | `e131423` + `189ea1e` |
+| T7 | S8 | `push` y PR encadenados | 🚧 | PR #1 abierto; PR #2 en curso |
+
+## Slices
+
+Dos commits de comportamiento en `feat/h2-web-mvp`, más uno de documentación.
+El núcleo (`e131423`) y la capa HTTP (`189ea1e`) son revisables por separado: el
+segundo no cambia ninguna regla del primero.
+
+## Evidencia de verificación
+
+- **201 pruebas** en verde (160 del motor + 41 de la capa web).
+- **E2E manual 16/16** con uvicorn real: login, rechazo de CSRF, subida con hash
+  estable, trabajo completado y **PDF real de 110.109 bytes** descargado con
+  `Content-Disposition`, cabeceras de seguridad, 404 para recurso ajeno.
 
 ## Log
 
@@ -62,3 +75,13 @@
   «Invalid username or token. Password authentication is not supported». No hay
   credencial de GitHub ni `gh`. Publicar requiere que el usuario configure un
   token/gh o abra el PR.
+- **L4** — Desbloqueado: el usuario instaló y autenticó `gh` 2.97 (keyring,
+  scopes `repo`+`workflow`). **PR #1 abierto y publicado**:
+  https://github.com/RM-Monterrosa/rose-nexus/pull/1 (67 archivos, 6.444 líneas,
+  base `main`). La contraseña de la cuenta no habilitaba Git: GitHub exige token
+  u OAuth.
+- **L5** — Verificación de H2: 201 pruebas en verde y E2E manual 16/16 con
+  uvicorn real, incluyendo un **PDF real de 110.109 bytes** descargado por la API
+  y cabeceras de seguridad en `/api/health`, `/login` y `/app`. Un fallo previo
+  de la sonda era del propio verificador (normalización de mayúsculas de
+  cabeceras), no del servidor.
