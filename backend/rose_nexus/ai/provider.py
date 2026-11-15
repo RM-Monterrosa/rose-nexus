@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Mapping, Protocol, Sequence, runtime_checkable
 from urllib.parse import urlsplit
 
+from .context import ContextMeasurement
 from .errors import (
     InferenceConfigurationError,
     InferenceHTTPError,
@@ -116,6 +117,45 @@ class OpenAICompatibleProvider:
             latency_ms=(time.monotonic() - started) * 1000,
         )
 
+    def measure_context(
+        self, messages: Sequence[Mapping[str, str]]
+    ) -> ContextMeasurement:
+        """Measure the exact server-rendered prompt without generating text."""
+        props = self._llama_cpp_json("/props", messages)
+        if not isinstance(props, dict) or not isinstance(
+            props.get("default_generation_settings"), dict
+        ):
+            raise InferenceProtocolError("Server properties have no generation settings")
+        context_tokens = props["default_generation_settings"].get("n_ctx")
+        if type(context_tokens) is not int or context_tokens <= 0:
+            raise InferenceProtocolError("Server context size must be a positive integer")
+
+        rendered = self._llama_cpp_json(
+            "/apply-template",
+            messages,
+            body={"messages": list(messages), "add_generation_prompt": True},
+        )
+        if not isinstance(rendered, dict) or not isinstance(rendered.get("prompt"), str):
+            raise InferenceProtocolError("Rendered prompt response has no prompt string")
+        tokenized = self._llama_cpp_json(
+            "/tokenize",
+            messages,
+            body={
+                "content": rendered["prompt"],
+                "add_special": False,
+                "parse_special": True,
+            },
+        )
+        if not isinstance(tokenized, dict) or not isinstance(tokenized.get("tokens"), list):
+            raise InferenceProtocolError("Tokenize response has no token array")
+        tokens = tokenized["tokens"]
+        if any(type(token) is not int for token in tokens):
+            raise InferenceProtocolError("Tokenize response contains a non-integer token")
+        return ContextMeasurement(
+            server_context_tokens=context_tokens,
+            prompt_tokens=len(tokens),
+        )
+
     def complete(
         self,
         messages: Sequence[Mapping[str, str]],
@@ -153,6 +193,39 @@ class OpenAICompatibleProvider:
             sensitive_values=sensitive_values,
         )
         return self._parse_completion(payload)
+
+    def _llama_cpp_json(
+        self,
+        path: str,
+        messages: Sequence[Mapping[str, str]],
+        *,
+        body: object | None = None,
+    ) -> object:
+        """Call a native llama.cpp endpoint through the guarded H3 transport."""
+        endpoint = self.settings.endpoint.rstrip("/")
+        base = endpoint[:-3] if endpoint.endswith("/v1") else endpoint
+        headers = {}
+        data = None
+        method = "GET"
+        if body is not None:
+            data = json.dumps(body, separators=(",", ":")).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+            method = "POST"
+        if self.settings.api_key:
+            headers["Authorization"] = f"Bearer {self.settings.api_key}"
+        request = urllib.request.Request(
+            base + path,
+            data=data,
+            headers=headers,
+            method=method,
+        )
+        sensitive_values = [self.settings.api_key or ""]
+        sensitive_values.extend(message.get("content", "") for message in messages)
+        return self._request_json(
+            request,
+            timeout=self.settings.timeout_seconds,
+            sensitive_values=sensitive_values,
+        )
 
     def _request_json(
         self,

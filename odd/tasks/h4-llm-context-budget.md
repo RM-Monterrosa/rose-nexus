@@ -16,7 +16,7 @@ Runner: PATH="$PWD/.venv/bin:$PATH" ./scripts/verify.sh · Pruebas focales con P
 
 ## Tasks
 
-- T1 · S1-S3,S6,S9 · parent inline · pending · RED/GREEN pendiente · Slice 1, rama feat/h4-context-preflight: transporte ContextPreflight y pruebas · Risk: item 2 (nuevos usos del transporte anti-SSRF y privacidad).
+- T1 · S1-S3,S6,S9 · parent inline · done · RED: módulo context ausente (1 error de importación) → GREEN: 49 pruebas AI OK; commit de slice 1, hash en L7 · Transporte ContextPreflight verificado · Risk: item 2 (nuevos usos del transporte anti-SSRF y privacidad).
 - T2 · S1-S6,S9 · parent inline · pending · RED/GREEN pendiente · Slice 2, rama feat/h4-context-admission: presupuesto, InferenceClient y rechazo fail-closed.
 - T3 · S4-S6,S9 · parent inline · pending · RED/GREEN pendiente · Slice 3, rama feat/h4-context-surfaces: CLI/web compatible y señalización de respuestas limitadas.
 - T4 · S1-S3,S6-S7 · parent inline · pending · Evidencia pendiente · Slice 4, rama feat/h4-context-docs: ADR-008, documentación, configuración y calibración viva opt-in.
@@ -42,3 +42,5 @@ Documenta la arquitectura en ADR-008 y actualiza las instrucciones pertinentes»
 - L2: Baseline previa confirmada: árbol limpio, PR #1/#2/#3 abiertos; 260 pruebas OK y 1 skip usando el .venv existente. Servidor real: rose-spark-4b, n_ctx=8192, 1 slot; /apply-template y /tokenize disponibles. Rama H4 creada desde cf18a4d41f581e74a3f687fd519ff654ace50808.
 - L3: Pronóstico de entrega superior a unas 400 líneas; con estrategia ask-on-risk se requirió una elección de agrupación antes del primer commit.
 - L4: El usuario eligió «Cadena sobre la rama de H4 (recomendada)» (chain_strategy=feature-branch-chain). Cuatro slices dependientes: preflight → admission → surfaces → docs. Tracker PR futuro en borrador; ninguna publicación ni fusión autorizada.
+- L5: Commit de tracking 093f416 sobre la rama tracker. La rama por defecto remota se verificó como main. El conteo de slices se mide desde cf18a4d/H3, no desde origin/main, porque la cadena conserva las dependencias H1→H2→H3.
+- L6: Slice 1 en feat/h4-context-preflight. RED observado: ModuleNotFoundError rose_nexus.ai.context (1 error). GREEN: 24 pruebas focales de preflight/provider y luego 49 pruebas AI, todas OK. No se declaró todavía concordancia exacta con usage.prompt_tokens: esa aceptación pertenece a T4.

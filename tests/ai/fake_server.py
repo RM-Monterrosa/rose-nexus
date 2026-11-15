@@ -22,8 +22,12 @@ class FakeLlmServer:
         delay_seconds: float = 0.0,
         error_body: str = "inference failed",
         redirect_endpoint: str | None = None,
+        server_context_tokens: object = 8192,
+        prompt_tokens: int = 37,
     ) -> None:
         self.behavior = behavior
+        self.server_context_tokens = server_context_tokens
+        self.prompt_tokens = prompt_tokens
         self.health_shape = health_shape
         self.model = model
         self.content = content
@@ -34,6 +38,8 @@ class FakeLlmServer:
         self.request_count = 0
         self.last_payload: dict[str, Any] | None = None
         self.last_headers: dict[str, str] = {}
+        self.preflight_requests: list[tuple[str, dict[str, Any] | None]] = []
+        self.preflight_headers: list[dict[str, str]] = []
         self.request_started = threading.Event()
         self._active = 0
         self._state_lock = threading.Lock()
@@ -63,6 +69,10 @@ class FakeLlmServer:
             """Handle model discovery and chat completion requests."""
 
             def do_GET(self) -> None:  # noqa: N802 - stdlib handler API
+                if self.path == "/props":
+                    self._record_preflight(None)
+                    self._respond_to_preflight("props")
+                    return
                 if self.path != "/v1/models":
                     self._send(404, b"not found", "text/plain; charset=utf-8")
                     return
@@ -85,6 +95,16 @@ class FakeLlmServer:
                 self._send_json(200, payload)
 
             def do_POST(self) -> None:  # noqa: N802 - stdlib handler API
+                if self.path in {"/apply-template", "/tokenize"}:
+                    length = int(self.headers.get("Content-Length", "0"))
+                    raw_body = self.rfile.read(length)
+                    try:
+                        payload = json.loads(raw_body.decode("utf-8"))
+                    except (UnicodeDecodeError, json.JSONDecodeError):
+                        payload = None
+                    self._record_preflight(payload)
+                    self._respond_to_preflight(self.path.removeprefix("/"))
+                    return
                 if self.path != "/v1/chat/completions":
                     self._send(404, b"not found", "text/plain; charset=utf-8")
                     return
@@ -107,6 +127,48 @@ class FakeLlmServer:
                 finally:
                     with fake._state_lock:
                         fake._active -= 1
+
+            def _record_preflight(self, payload: dict[str, Any] | None) -> None:
+                with fake._state_lock:
+                    fake.preflight_requests.append((self.path, payload))
+                    fake.preflight_headers.append(dict(self.headers.items()))
+
+            def _respond_to_preflight(self, route: str) -> None:
+                if fake.behavior == f"{route}_slow":
+                    time.sleep(fake.delay_seconds)
+                if fake.behavior == f"{route}_http_500":
+                    self._send(500, fake.error_body.encode("utf-8"), "text/plain")
+                    return
+                if fake.behavior == f"{route}_redirect":
+                    self.send_response(302)
+                    self.send_header("Location", fake.endpoint + "/chat/completions")
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+                if fake.behavior == f"{route}_invalid_json":
+                    self._send(200, b"{not-json", "application/json")
+                    return
+                if fake.behavior == "tokenize_oversized" and route == "tokenize":
+                    body = b'{"tokens":[]}' + b" " * (2 * 1024 * 1024)
+                    self._send(200, body, "application/json")
+                    return
+                if route == "props":
+                    self._send_json(
+                        200,
+                        {"default_generation_settings": {"n_ctx": fake.server_context_tokens}},
+                    )
+                elif route == "apply-template":
+                    if fake.behavior == "apply-template_missing_prompt":
+                        self._send_json(200, {})
+                    else:
+                        self._send_json(
+                            200,
+                            {"prompt": "<|im_start|>user\nUnicode á € 😀<|im_end|>\n"},
+                        )
+                elif fake.behavior == "tokenize_invalid":
+                    self._send_json(200, {"tokens": "not-an-array"})
+                else:
+                    self._send_json(200, {"tokens": [0] * fake.prompt_tokens})
 
             def _respond_to_completion(self) -> None:
                 if fake.behavior == "http_500":
