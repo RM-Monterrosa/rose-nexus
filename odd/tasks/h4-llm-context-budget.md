@@ -18,8 +18,8 @@ Runner: PATH="$PWD/.venv/bin:$PATH" ./scripts/verify.sh · Pruebas focales con P
 
 - T1 · S1-S3,S6,S9 · parent inline · done · RED: módulo context ausente (1 error de importación) → GREEN: 49 pruebas AI OK; commit a6e73ff · Transporte ContextPreflight verificado · Risk: item 2 (nuevos usos del transporte anti-SSRF y privacidad).
 - T2 · S1-S6,S9 · parent inline · done · RED: 4 pruebas nuevas, 5 fallos → GREEN: 53 pruebas AI y 19 CLI/web OK; commit 8073a84 · Presupuesto y rechazo fail-closed verificados.
-- T3 · S4-S6,S9 · gentle-ai-worker por context backstop · done · RED: 23 pruebas, 4 fallos (3 comportamientos ausentes + 1 expectativa de formato corregida) → GREEN: 23 pruebas focales OK y spot check parent 23/23; commit de slice 3, hash en L13 · CLI/web compatibles verificados.
-- T4 · S1-S3,S6-S7 · gentle-ai-worker por context backstop · pending · Slice 4, rama feat/h4-context-docs: ADR-008, documentación, configuración y calibración viva opt-in.
+- T3 · S4-S6,S9 · gentle-ai-worker por context backstop · done · RED: 23 pruebas, 4 fallos (3 comportamientos ausentes + 1 expectativa de formato corregida) → GREEN: 23 pruebas focales OK y spot check parent 23/23; commit ed2f206 · CLI/web compatibles verificados.
+- T4 · S1-S3,S6-S7 · gentle-ai-worker por context backstop · done · Sin RED de comportamiento (documentación + caracterización); default 1 skip y worker/parent 3 pruebas vivas OK, seis comparaciones delta=0 entre ambas series; commit de slice 4, hash en L15 · ADR y concordancia verificados.
 - T5 · S1-S9 · parent + gentle-ai-verify · pending · Verificación completa, revisión independiente por riesgo y cierre · Risk: item 2 (seguridad de transporte y privacidad).
 
 ## Log
@@ -50,3 +50,5 @@ Documenta la arquitectura en ADR-008 y actualiza las instrucciones pertinentes»
 - L10: El parent alcanzó el context backstop durante T3. Se delega únicamente CLI/web y sus pruebas a gentle-ai-worker, sin commit ni edición del documento ODD. El parent conserva tracking, calibración viva y reconciliación.
 - L11: Calibración manual autorizada contra llama.cpp real, sin contenido en la salida: ASCII preflight=25 usage=25 delta=0; historial con marcadores <|im_start|>/<|im_end|> literales preflight=44 usage=44 delta=0; Unicode con acentos combinados, emoji y CJK preflight=40 usage=40 delta=0. Tres generaciones sintéticas con max_tokens=1 terminaron en finish_reason=length como se esperaba. No se requiere margen correctivo para estos casos.
 - L12: T3 delegado completó S4-S6/S9 sin commit ni escrituras fuera de superficie. Worker: 23 pruebas focales OK y diff check limpio. Parent inspeccionó los cuatro archivos del worker y repitió el comando: 23/23 OK. Las interfaces JSON y los contratos existentes permanecen intactos.
+- L13: Slice 3 comprometido como ed2f206 (146 inserciones, 5 eliminaciones). Boundary para el siguiente slice: feat/h4-context-surfaces en ed2f206.
+- L14: Slice 4 en feat/h4-context-docs. Worker: default suite opt-out OK (1 skip del módulo) y una corrida viva 3/3 OK; parent inspeccionó la documentación/prueba, distinguió las dos series sintéticas en ADR-008 y repitió la corrida viva: 3/3 OK. Serie permanente: ASCII 22=22, historial 46=46, Unicode 32=32, todas delta=0. Junto con la sonda inicial 25=25, 44=44, 40=40 no se justifica margen correctivo. No hubo cambios de producción en este slice.

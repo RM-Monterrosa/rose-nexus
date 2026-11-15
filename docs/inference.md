@@ -1,13 +1,15 @@
-# Inferencia local (H3)
+# Inferencia local (H3/H4)
 
-Cliente desacoplado para el modelo local servido por `llama.cpp`. **No** ejecuta
-herramientas, **no** corre agentes y **no** interviene en la conversión de
-documentos.
+Cliente desacoplado para el modelo local servido por `llama.cpp`, con medición
+exacta del contexto desde H4. **No** ejecuta herramientas, **no** corre agentes
+y **no** interviene en la conversión de documentos.
 
 ```text
 rose llm / pantalla /app/llm
         ↓
-InferenceClient  (concurrencia 1, métricas sin contenido)
+InferenceClient  (preflight + presupuesto, concurrencia 1, métricas sin contenido)
+        ↓
+ContextPreflight  (/props → /apply-template → /tokenize)
         ↓
 OpenAICompatibleProvider  (urllib, timeouts, sin redirects)
         ↓
@@ -38,15 +40,52 @@ commitea con valores reales.
 | `ROSE_LLM_MODEL` | `rose-spark-4b` | Nombre exacto que reporta el servidor |
 | `ROSE_LLM_TIMEOUT_SECONDS` | `60` | Timeout de lectura |
 | `ROSE_LLM_CONNECT_TIMEOUT_SECONDS` | `5` | Timeout de conexión |
-| `ROSE_LLM_MAX_TOKENS` | `512` | Techo de salida |
+| `ROSE_LLM_MAX_TOKENS` | `512` | Reserva máxima de salida incluida en el presupuesto |
 | `ROSE_LLM_TEMPERATURE` | `0.2` | 0–2 |
 | `ROSE_LLM_TOP_P` | `0.95` | 0–1 |
-| `ROSE_LLM_CONTEXT_TOKENS` | `8192` | Declarativo: la ventana del servidor |
+| `ROSE_LLM_CONTEXT_TOKENS` | `8192` | Techo aplicado: el contexto efectivo es el mínimo entre este valor y el `n_ctx` del servidor |
 | `ROSE_LLM_MAX_CONCURRENCY` | `1` | Semáforo **por proceso** |
 | `ROSE_LLM_QUEUE_TIMEOUT_SECONDS` | `30` | Espera máxima antes de `inference_busy` |
 | `ROSE_LLM_ENABLED` | `false` | Habilita `ask`/`bench` y la pantalla |
 | `ROSE_LLM_ALLOW_REMOTE_ENDPOINT` | `false` | Permite hosts no loopback (no recomendado) |
 | `ROSE_LLM_API_KEY` | *(vacío)* | Solo por entorno; nunca en Git ni en logs |
+
+## Presupuesto exacto de contexto (H4)
+
+Cada intento de `llm ask`, cada ejecución de `llm bench` y cada envío web que
+llega al cliente hace **tres llamadas loopback adicionales** antes de generar:
+
+1. `GET /props` obtiene `default_generation_settings.n_ctx`.
+2. `POST /apply-template` renderiza todos los mensajes con la plantilla real del
+   modelo y `add_generation_prompt=true`.
+3. `POST /tokenize` cuenta ese prompt con `add_special=false` y
+   `parse_special=true`.
+
+El cálculo es:
+
+```text
+contexto_efectivo = min(ROSE_LLM_CONTEXT_TOKENS, n_ctx_del_servidor)
+tokens_requeridos = rendered_prompt_tokens + max_tokens
+```
+
+La medición y el presupuesto se validan **antes** de adquirir el semáforo y
+antes de `/chat/completions`. Si `max_tokens` supera por sí solo el contexto
+efectivo, la reserva es incompatible y falla con
+`inference_configuration_invalid` (exit 2). Si la suma excede el límite, falla
+con `prompt_too_long` (exit 2) e informa los conteos. No se invoca la completión
+ni se consume el slot en ninguno de esos casos.
+
+No existe fallback heurístico, recorte automático del prompt, resumen del
+historial ni reducción silenciosa de `max_tokens`. Si `/props`,
+`/apply-template` o `/tokenize` no está disponible, excede un timeout, devuelve
+un HTTP no exitoso o una respuesta inválida, la solicitud se rechaza con el
+mismo error tipificado del transporte H3. Las tres rutas comparten DNS/SSRF,
+bloqueo de redirects, límite de cuerpo de 2 MiB, privacidad y transporte stdlib;
+no se agregó ninguna dependencia. `health` solo consulta `/models`: su éxito no
+garantiza por sí solo que el servidor implemente las rutas de preflight.
+
+La decisión y su evidencia viva acotada están en
+`docs/decisions/ADR-008-context-budget.md`.
 
 ## CLI
 
@@ -90,6 +129,9 @@ export ROSE_LLM_ENABLED=true
   modelo.
 - Si el modelo está caído, la pantalla lo informa y el resto de la aplicación
   (subidas, trabajos, descargas) sigue funcionando.
+- Una respuesta admitida que termina con `finish_reason="length"` muestra
+  **Respuesta incompleta**: la generación alcanzó `max_tokens`. Un prompt que no
+  cabe en el presupuesto se rechaza antes de generar y muestra `prompt_too_long`.
 
 ## Concurrencia: un solo worker
 
@@ -110,8 +152,16 @@ slot**, así que:
 | `inference_timeout` | Sin respuesta dentro del timeout | 4 |
 | `inference_busy` | Cola llena: otra consulta ocupa el único slot | 4 |
 | `inference_http_error` | El servidor respondió distinto de 2xx (incluye 3xx: no se siguen) | 5 |
-| `inference_protocol_error` | JSON inválido, forma inesperada o cuerpo demasiado grande | 5 |
-| `inference_configuration_invalid` | Endpoint/parámetros inválidos o host no loopback | 2 |
+| `inference_protocol_error` | JSON inválido, forma inesperada o cuerpo demasiado grande, también en preflight | 5 |
+| `prompt_too_long` | Prompt renderizado + reserva de salida exceden el contexto efectivo; no se genera | 2 |
+| `inference_configuration_invalid` | Endpoint/parámetros inválidos, host no loopback o reserva `max_tokens` incompatible con el contexto | 2 |
+
+En la salida humana de `llm ask`, una completión con `finish_reason="length"`
+imprime en stderr `warning: generation reached max_tokens; answer may be
+incomplete`. La opción `--json` mantiene el contrato `{ok, answer, metrics}` y
+expone `finish_reason` en métricas, sin insertar ese aviso textual. El error
+`prompt_too_long` usa el mismo canal de errores y exit 2 que otras entradas
+inválidas; no cambia la estructura de `Answer`.
 
 ## Seguridad y privacidad
 
@@ -120,7 +170,9 @@ slot**, así que:
 - URLs con `user:pass@host` y esquemas que no sean `http`/`https` se rechazan.
 - **No se siguen redirecciones**: un `3xx` es error, no un salto a otro destino.
 - Las métricas registran tokens, latencia, tok/s, estado y código de error. Nunca
-  el prompt, la respuesta ni la API key.
+  el prompt, la respuesta ni la API key. `/props`, `/apply-template` y
+  `/tokenize` aplican las mismas reglas de redacción y privacidad que la
+  completión; los resultados de preflight conservan solo conteos numéricos.
 - El modelo **comete errores factuales**: se usa para redactar borradores, no
   como fuente de verdad ni para decidir acciones.
 
@@ -130,12 +182,22 @@ slot**, así que:
 # unitarias + CLI con servidor simulado (sin red al modelo)
 PYTHONPATH=backend .venv/bin/python -m unittest tests.ai tests.integration.test_cli_llm -v
 
-# integración opcional: se saltea sola si el túnel no responde
-PYTHONPATH=backend ROSE_LLM_ENABLED=true .venv/bin/python -m unittest tests.integration.test_llm_live -v
+# integración viva desactivada por defecto: se saltea sin red al modelo
+PYTHONPATH=backend .venv/bin/python -m unittest tests.integration.test_llm_live -v
+
+# una corrida viva acotada y explícita contra llama.cpp (health, ask y concordancia)
+PYTHONPATH=backend ROSE_LLM_LIVE_TESTS=true ROSE_LLM_ENABLED=true ROSE_LLM_ENDPOINT=http://127.0.0.1:18080/v1 ROSE_LLM_MODEL=rose-spark-4b .venv/bin/python -m unittest tests.integration.test_llm_live -v
 
 # suite completa
 PYTHONPATH=backend .venv/bin/python -m unittest discover -s tests -t .
 ```
+
+La prueba viva de concordancia recorre `ContextPreflight` y
+`OpenAICompatibleProvider.complete` con `max_tokens=1` y `temperature=0` para
+ASCII, historial con marcadores especiales literales y Unicode. Comprueba que
+`usage.prompt_tokens` exista y sea exactamente igual al preflight; no fija ni
+imprime el contenido generado. Sin `ROSE_LLM_LIVE_TESTS=true` todas las pruebas
+de este módulo se saltean, incluso si el endpoint está disponible.
 
 E2E manual recomendado: `llm health` → `llm ask` → `llm bench --runs 3` →
 levantar la web y consultar `/app/llm` → bajar el túnel y repetir: todo debe

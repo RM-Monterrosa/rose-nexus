@@ -146,7 +146,7 @@ PYTHONPATH=backend python3 -m rose_nexus.cli convert tests/fixtures/markdown/01-
   siguen pendientes.
 - Las fuentes Archivo/IBM Plex no se empaquetan: licencias sin verificar.
 
-## 9. Inferencia local (H3)
+## 9. Inferencia local (H3/H4)
 
 - El modelo es **borrador, no verdad**: tiene errores factuales conocidos. Nunca
   se usa como fuente de verdad ni para decidir acciones.
@@ -156,7 +156,19 @@ PYTHONPATH=backend python3 -m rose_nexus.cli convert tests/fixtures/markdown/01-
   tokens, latencia, tok/s, estado y código de error.
 - Endpoint **solo loopback**; se valida la resolución DNS en tiempo de llamada y
   **no se siguen redirecciones**. Habilitar un endpoint remoto exige ADR.
+- Todo intento de generación pasa por `ContextPreflight` y las rutas exactas
+  `/props` + `/apply-template` + `/tokenize`, con transporte stdlib y las mismas
+  políticas SSRF/DNS, redirects, timeouts, límite de cuerpo y privacidad de H3.
+  No se agregan dependencias ni fallbacks heurísticos.
+- `ROSE_LLM_CONTEXT_TOKENS` es un techo aplicado:
+  `contexto_efectivo=min(configuración, n_ctx)` y
+  `requerido=rendered_prompt_tokens+max_tokens`. El exceso o una reserva de
+  generación incompatible se rechaza **antes** del semáforo/completión, sin
+  truncar prompts ni reducir `max_tokens` silenciosamente.
 - Un worker de uvicorn: el semáforo de concurrencia es **por proceso** y la
   instancia tiene **1 slot**.
 - `studio/` no importa `ai/`: si el modelo se cae, el convertidor y la web siguen
   funcionando.
+- Los avisos humanos de CLI/web por `finish_reason="length"` advierten posible
+  truncamiento sin cambiar los contratos JSON ni `Answer`. La evidencia viva de
+  concordancia es opt-in y numérica; no fija ni registra salidas del modelo.
