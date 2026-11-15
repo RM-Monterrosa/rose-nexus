@@ -17,9 +17,9 @@ Runner: PATH="$PWD/.venv/bin:$PATH" ./scripts/verify.sh · Pruebas focales con P
 ## Tasks
 
 - T1 · S1-S3,S6,S9 · parent inline · done · RED: módulo context ausente (1 error de importación) → GREEN: 49 pruebas AI OK; commit a6e73ff · Transporte ContextPreflight verificado · Risk: item 2 (nuevos usos del transporte anti-SSRF y privacidad).
-- T2 · S1-S6,S9 · parent inline · done · RED: 4 pruebas nuevas, 5 fallos → GREEN: 53 pruebas AI y 19 CLI/web OK; commit de slice 2, hash en L9 · Presupuesto y rechazo fail-closed verificados.
-- T3 · S4-S6,S9 · parent inline · pending · RED/GREEN pendiente · Slice 3, rama feat/h4-context-surfaces: CLI/web compatible y señalización de respuestas limitadas.
-- T4 · S1-S3,S6-S7 · parent inline · pending · Evidencia pendiente · Slice 4, rama feat/h4-context-docs: ADR-008, documentación, configuración y calibración viva opt-in.
+- T2 · S1-S6,S9 · parent inline · done · RED: 4 pruebas nuevas, 5 fallos → GREEN: 53 pruebas AI y 19 CLI/web OK; commit 8073a84 · Presupuesto y rechazo fail-closed verificados.
+- T3 · S4-S6,S9 · gentle-ai-worker por context backstop · done · RED: 23 pruebas, 4 fallos (3 comportamientos ausentes + 1 expectativa de formato corregida) → GREEN: 23 pruebas focales OK y spot check parent 23/23; commit de slice 3, hash en L13 · CLI/web compatibles verificados.
+- T4 · S1-S3,S6-S7 · gentle-ai-worker por context backstop · pending · Slice 4, rama feat/h4-context-docs: ADR-008, documentación, configuración y calibración viva opt-in.
 - T5 · S1-S9 · parent + gentle-ai-verify · pending · Verificación completa, revisión independiente por riesgo y cierre · Risk: item 2 (seguridad de transporte y privacidad).
 
 ## Log
@@ -46,3 +46,7 @@ Documenta la arquitectura en ADR-008 y actualiza las instrucciones pertinentes»
 - L6: Slice 1 en feat/h4-context-preflight. RED observado: ModuleNotFoundError rose_nexus.ai.context (1 error). GREEN: 24 pruebas focales de preflight/provider y luego 49 pruebas AI, todas OK. No se declaró todavía concordancia exacta con usage.prompt_tokens: esa aceptación pertenece a T4.
 - L7: Slice 1 comprometido como a6e73ff (333 inserciones, 1 eliminación). Boundary para el siguiente slice: feat/h4-context-preflight en a6e73ff.
 - L8: Slice 2 en feat/h4-context-admission. RED: cuatro pruebas públicas nuevas del cliente fallaron (5 fallos incluyendo subtests) porque no existía evaluación de presupuesto. GREEN: 53 pruebas AI y 19 pruebas de integración CLI/web OK. La igualdad prompt+max_tokens=contexto se acepta; contexto+1 se rechaza con prompt_too_long antes del semáforo y completion.
+- L9: Slice 2 comprometido como 8073a84 (165 inserciones, 3 eliminaciones). Boundary para el siguiente slice: feat/h4-context-admission en 8073a84.
+- L10: El parent alcanzó el context backstop durante T3. Se delega únicamente CLI/web y sus pruebas a gentle-ai-worker, sin commit ni edición del documento ODD. El parent conserva tracking, calibración viva y reconciliación.
+- L11: Calibración manual autorizada contra llama.cpp real, sin contenido en la salida: ASCII preflight=25 usage=25 delta=0; historial con marcadores <|im_start|>/<|im_end|> literales preflight=44 usage=44 delta=0; Unicode con acentos combinados, emoji y CJK preflight=40 usage=40 delta=0. Tres generaciones sintéticas con max_tokens=1 terminaron en finish_reason=length como se esperaba. No se requiere margen correctivo para estos casos.
+- L12: T3 delegado completó S4-S6/S9 sin commit ni escrituras fuera de superficie. Worker: 23 pruebas focales OK y diff check limpio. Parent inspeccionó los cuatro archivos del worker y repitió el comando: 23/23 OK. Las interfaces JSON y los contratos existentes permanecen intactos.

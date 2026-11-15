@@ -285,6 +285,11 @@ def _llm_ask(args: argparse.Namespace) -> None:
         )
         return
     print(answer.text)
+    if answer.metrics.finish_reason == "length":
+        print(
+            "warning: generation reached max_tokens; answer may be incomplete",
+            file=sys.stderr,
+        )
     print(f"metrics: {answer.metrics.as_log()}", file=sys.stderr)
 
 

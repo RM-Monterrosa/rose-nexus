@@ -161,6 +161,53 @@ class EnabledLlmScreenTests(LlmWebServerHarness, unittest.TestCase):
             ],
         )
 
+    def test_post_rejects_rendered_prompt_over_budget_with_specific_details(self) -> None:
+        secret_prompt = "web-over-budget-prompt-secret-2468ace0"
+        self.fake_llm.prompt_tokens = 100_000
+        self.form_login()
+        csrf = self.csrf_from_llm()
+        response = self.ask(secret_prompt, csrf)
+        self.assertEqual(response.status, 200, response.text)
+        self.assertIn("prompt_too_long", response.text)
+        self.assertIn(
+            "El mensaje supera el presupuesto de contexto del modelo", response.text
+        )
+        self.assertNotIn("No se pudo consultar al modelo", response.text)
+        self.assertIn(
+            "Prompt budget exceeded: 100000 prompt tokens + 512 generation tokens "
+            "= 100512, but the context limit is 8192",
+            response.text,
+        )
+        self.assertNotIn('aria-label="Respuesta del modelo"', response.text)
+        self.assertEqual(response.text.count(secret_prompt), 1)
+        self.assertNotIn("Unicode á € 😀", response.text)
+        self.assertEqual(self.fake_llm.request_count, 0)
+
+    def test_post_warns_when_finish_reason_is_length(self) -> None:
+        secret_prompt = "web-length-finish-prompt-secret-13ad579c"
+        self.fake_llm.finish_reason = "length"
+        self.form_login()
+        csrf = self.csrf_from_llm()
+        response = self.ask(secret_prompt, csrf)
+        self.assertEqual(response.status, 200, response.text)
+        self.assertIn(
+            '<p class="error" role="alert"><strong>Respuesta incompleta:</strong> '
+            "la generación alcanzó max_tokens y el texto puede no estar completo.</p>",
+            response.text,
+        )
+        self.assertIn(
+            "Respuesta &lt;script&gt;alert(1)&lt;/script&gt; del modelo",
+            response.text,
+        )
+        self.assertNotIn("Respuesta <script>alert(1)</script>", response.text)
+        self.assertIn("Motivo de finalización", response.text)
+        self.assertIn("length", response.text)
+        self.assertIn("Tokens", response.text)
+        self.assertIn("24", response.text)
+        self.assertEqual(response.text.count(secret_prompt), 1)
+        self.assertNotIn("Unicode á € 😀", response.text)
+        self.assertEqual(self.fake_llm.request_count, 1)
+
     def test_empty_and_oversized_prompts_render_errors_without_model_calls(self) -> None:
         self.form_login()
         csrf = self.csrf_from_llm()

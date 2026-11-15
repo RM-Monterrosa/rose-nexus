@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 from ..ai.client import Answer, InferenceClient
+from ..ai.errors import InferencePromptTooLong
 from ..core.errors import RoseNexusError
 from .html import _e, page
 from .http_security import ApiProblem, require_csrf, require_session
@@ -130,9 +131,16 @@ def llm_page(
         )
     answer_html = ""
     if answer is not None:
+        completion_warning = ""
+        if answer.metrics.finish_reason == "length":
+            completion_warning = (
+                '<p class="error" role="alert"><strong>Respuesta incompleta:</strong> '
+                "la generación alcanzó max_tokens y el texto puede no estar completo.</p>"
+            )
         answer_html = (
             '<section aria-label="Respuesta del modelo"><h2>Respuesta</h2>'
-            f"<pre>{_e(answer.text)}</pre></section>"
+            + completion_warning
+            + f"<pre>{_e(answer.text)}</pre></section>"
             + _metrics(answer)
         )
     body = (
@@ -231,6 +239,12 @@ def create_llm_router() -> APIRouter:
         else:
             try:
                 answer = await run_in_threadpool(client.ask, system, prompt)
+            except InferencePromptTooLong as inference_error:
+                error = (
+                    inference_error.code,
+                    "El mensaje supera el presupuesto de contexto del modelo: "
+                    f"{inference_error.message}",
+                )
             except RoseNexusError as inference_error:
                 error = (
                     inference_error.code,

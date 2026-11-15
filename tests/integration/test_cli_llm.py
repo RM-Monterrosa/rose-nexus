@@ -162,6 +162,75 @@ class LlmCommandTests(unittest.TestCase):
         self.assertNotIn(secret_prompt.decode(), result.stderr)
         self.assertEqual(self.server.request_count, before)
 
+    def test_ask_rejects_rendered_prompt_over_budget_without_completion_or_echo(self):
+        secret_prompt = "over-budget-prompt-secret-0a0b3c19"
+        fake_api_key = "fake-api-key-not-for-logging"
+        self.server.prompt_tokens = 100_000
+        before = self.server.request_count
+        result = run_cli(
+            "llm",
+            "ask",
+            "--prompt",
+            secret_prompt,
+            env_extra=llm_env(self.server, ROSE_LLM_API_KEY=fake_api_key),
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("prompt_too_long", result.stderr)
+        self.assertIn(
+            "Prompt budget exceeded: 100000 prompt tokens + 512 generation tokens "
+            "= 100512, but the context limit is 8192",
+            result.stderr,
+        )
+        self.assertNotIn(secret_prompt, result.stdout)
+        self.assertNotIn(secret_prompt, result.stderr)
+        self.assertNotIn(fake_api_key, result.stdout)
+        self.assertNotIn(fake_api_key, result.stderr)
+        self.assertNotIn("Unicode á € 😀", result.stdout + result.stderr)
+        self.assertEqual(self.server.request_count, before)
+
+    def test_ask_warns_when_generation_reaches_max_tokens(self):
+        secret_prompt = "length-finish-prompt-secret-ed735c21"
+        fake_api_key = "fake-api-key-not-for-logging"
+        self.server.finish_reason = "length"
+        environment = llm_env(self.server, ROSE_LLM_API_KEY=fake_api_key)
+        result = run_cli(
+            "llm", "ask", "--prompt", secret_prompt, env_extra=environment
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "Fake answer.\n")
+        self.assertIn(
+            "warning: generation reached max_tokens; answer may be incomplete",
+            result.stderr.splitlines(),
+        )
+        metric_lines = [
+            line for line in result.stderr.splitlines() if line.startswith("metrics: ")
+        ]
+        self.assertEqual(len(metric_lines), 1)
+        metrics = json.loads(metric_lines[0].removeprefix("metrics: "))
+        self.assertEqual(metrics["finish_reason"], "length")
+        self.assertEqual(metrics["prompt_tokens"], 22)
+        self.assertEqual(metrics["completion_tokens"], 2)
+        self.assertNotIn(secret_prompt, result.stdout)
+        self.assertNotIn(secret_prompt, result.stderr)
+        self.assertNotIn(fake_api_key, result.stdout)
+        self.assertNotIn(fake_api_key, result.stderr)
+
+        machine = run_cli(
+            "llm", "ask", "--prompt", secret_prompt, "--json", env_extra=environment
+        )
+        self.assertEqual(machine.returncode, 0, machine.stderr)
+        self.assertEqual(machine.stderr, "")
+        payload = json.loads(machine.stdout)
+        self.assertEqual(set(payload), {"ok", "answer", "metrics"})
+        self.assertEqual(payload["answer"], "Fake answer.")
+        self.assertEqual(payload["metrics"]["finish_reason"], "length")
+        self.assertNotIn(secret_prompt, machine.stdout)
+        self.assertNotIn(secret_prompt, machine.stderr)
+        self.assertNotIn(fake_api_key, machine.stdout)
+        self.assertNotIn(fake_api_key, machine.stderr)
+        self.assertEqual(self.server.request_count, 2)
+
     def test_ask_disabled_reports_inference_disabled(self):
         environment = llm_env(self.server)
         del environment["ROSE_LLM_ENABLED"]

@@ -24,10 +24,12 @@ class FakeLlmServer:
         redirect_endpoint: str | None = None,
         server_context_tokens: object = 8192,
         prompt_tokens: int = 37,
+        finish_reason: str = "stop",
     ) -> None:
         self.behavior = behavior
         self.server_context_tokens = server_context_tokens
         self.prompt_tokens = prompt_tokens
+        self.finish_reason = finish_reason
         self.health_shape = health_shape
         self.model = model
         self.content = content
@@ -211,7 +213,7 @@ class FakeLlmServer:
                 if fake.behavior == "non_string_content":
                     message["content"] = {"text": fake.content}
                 choices = [] if fake.behavior == "missing_choices" else [
-                    {"message": message, "finish_reason": "stop"}
+                    {"message": message, "finish_reason": fake.finish_reason}
                 ]
                 payload = {
                     "object": "chat.completion",
