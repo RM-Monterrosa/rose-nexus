@@ -104,11 +104,16 @@ def get_document_status(
     if job is None:
         raise _not_found("job")
     artifacts = repository.list_artifacts(job.id, user.id)
+    error_message = job.error_message
+    if job.error_code == "internal_error":
+        error_message = "the job failed due to an internal error"
+    elif error_message is not None:
+        error_message = error_message[:2_000]
     return {
         "job_id": job.id,
         "status": job.status,
         "error_code": job.error_code,
-        "error_message": job.error_message,
+        "error_message": error_message,
         "artifacts": [
             {"kind": artifact.kind, "bytes": artifact.bytes, "sha256": artifact.sha256}
             for artifact in artifacts

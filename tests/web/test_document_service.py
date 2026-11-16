@@ -188,6 +188,24 @@ class DocumentServiceTests(unittest.TestCase):
             job_id=job_id,
         )
 
+    def test_internal_job_error_message_does_not_expose_exception_details(self):
+        job_id = self.submit()["job_id"]
+        self.repository.update_job_status(
+            job_id,
+            "failed",
+            error_code="internal_error",
+            error_message="cannot access /srv/rose/private/storage/source.md",
+            finished_at=CREATED_AT,
+        )
+
+        status = get_document_status(
+            repository=self.repository, user=self.alice, job_id=job_id
+        )
+
+        self.assertEqual(status["error_code"], "internal_error")
+        self.assertEqual(status["error_message"], "the job failed due to an internal error")
+        self.assertNotIn("/srv/rose/private", json.dumps(status))
+
     def test_document_metadata_is_safe_and_owner_scoped(self):
         metadata = get_document_metadata(
             repository=self.repository,

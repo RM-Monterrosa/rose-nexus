@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "rose-documents": {
+      "command": "python",
+      "args": ["-m", "rose_nexus.mcp"],
+      "cwd": ".",
+      "env": {
+        "PYTHONPATH": "backend",
+        "ROSE_MCP_USERNAME": "${ROSE_MCP_USERNAME}",
+        "ROSE_MCP_WORKER_MODE": "serialized"
+      },
+      "timeout": 60,
+      "enabled": false,
+      "exposure": "direct",
+      "description": "Crear trabajos de documentos y consultar solo recursos propios."
+    }
+  }
+}
