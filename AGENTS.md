@@ -39,8 +39,8 @@ históricos de entregas técnicas T-LLM/T-CTX usados en ramas.
   proyecto permanece opt-in/disabled. El worker sigue siendo proceso-local: la
   prueba exige serializarlo y detener el worker web. El usuario confirmó que
   terminó la validación de la rama `demo` y autorizó crear el PR; el target
-  observado sigue en `9b3e51d`, ancestro de la rama de feature. El PR está por
-  crear y T5 aún requiere revisión independiente y cierre. **No afirmar que H3
+  observado sigue en `9b3e51d`, ancestro de la rama de feature. El PR #10 está
+  abierto contra `demo`; T5 aún requiere revisión independiente y cierre. **No afirmar que H3
   está cerrado ni que la Pi cotidiana del usuario quedó configurada.** Consultar
   `odd/tasks/rose-documents-mcp.md` y revisar `git status --short --branch` antes
   de continuar; la nota de estado remoto puede cambiar.
