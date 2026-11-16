@@ -4,12 +4,71 @@ Reglas vinculantes para cualquier agente (Pi, subagente o persona) que trabaje e
 este repositorio. Si una instrucción de este archivo choca con una petición del
 usuario, se detiene el trabajo y se pregunta.
 
-## 1. Alcance actual
+## 1. Estado del proyecto y prioridad para sesiones nuevas
 
-Estamos en **H0/H1** del plan (`docs/production-plan.md`): baseline verificado y
-convertidor CLI determinista `.md`/`.txt` → `.tex` → `.pdf` con branding
-versionado. **No** se implementan todavía MCP, OCR, ASR, multiagentes, frontend
-ni integración con Spark/LLM.
+**Leer esta sección antes de explorar o cambiar código.** La fuente del roadmap de
+producto es `docs/production-plan.md`; el estado implementado se determina con el
+Git y el código actuales. `docs/Rose_Nexus_Contexto_de_Traspaso_v1.2_CORREGIDO.md`
+es un resumen histórico útil, no una certificación del estado remoto. Antes de
+continuar, revisar `git status --short --branch` y respetar todo cambio existente.
+
+### Roadmap oficial: hitos completos, en curso y pendientes
+
+Los nombres oficiales son **H0, H1–H8 y H7b**. No confundirlos con los nombres
+históricos de entregas técnicas T-LLM/T-CTX usados en ramas.
+
+- **H0 — Discovery / baseline: PARCIAL.** Se reportaron la instancia RTX 3060 de
+  12 GB, llama.cpp, Qwen3-4B y una conexión por túnel SSH. No dar por verificados
+  todos los criterios de H0: benchmark 8B, persistencia y otros datos de entorno
+  siguen pendientes de confirmación.
+- **H1 — Conversor CLI: COMPLETO, según implementación y verificaciones
+  reportadas.** Convierte Markdown/TXT a LaTeX determinista; usa el perfil
+  canónico `invering` y mantiene `demo` como provisional. La compilación PDF es
+  opcional y solo ocurre en la imagen TeX aislada fijada por digest. Se reportaron
+  11 fixtures, 22 páginas PDF y 160 pruebas iniciales.
+- **H2 — Aplicación web MVP: COMPLETO según reporte; validación móvil LAN/TLS
+  pendiente.** FastAPI sirve una UI responsive renderizada en servidor, con
+  autenticación, SQLite, cargas, trabajos y descargas. No es una SPA separada.
+  Se reportó E2E 16/16; no asumir que acceso móvil por LAN con TLS ya está
+  verificado.
+- **H3 — Integración agente/MCP del roadmap: EN CURSO.** `rose-documents` se
+  implementó localmente por STDIO reutilizando servicios web existentes. T1
+  (servicio compartido) está en `db807c8`; T2a/T2b/T3/T4 están implementados y
+  verificados en el árbol local. Suite completa: 318 OK, 1 skip; Pi 1.5.2
+  descubrió las cuatro herramientas `direct` en un store temporal. La config de
+  proyecto permanece opt-in/disabled. El worker sigue siendo proceso-local: la
+  prueba exige serializarlo y detener el worker web. El usuario confirmó que
+  terminó la validación de la rama `demo` y autorizó crear el PR; el target
+  observado sigue en `9b3e51d`, ancestro de la rama de feature. El PR #10 está
+  abierto contra `demo`; T5 aún requiere revisión independiente y cierre. **No afirmar que H3
+  está cerrado ni que la Pi cotidiana del usuario quedó configurada.** Consultar
+  `odd/tasks/rose-documents-mcp.md` y revisar `git status --short --branch` antes
+  de continuar; la nota de estado remoto puede cambiar.
+- **H4 — Inbox y archivos: PENDIENTE.** La biblioteca/carga básica de H2 no
+  completa el Inbox universal ni el uso entre dos dispositivos autorizados.
+- **H5 — Learn: PRIORIDAD ACORDADA. H6 — Dev: DESPUÉS.** El usuario confirmó
+  Learn primero y Dev después; ambos hitos siguen pendientes. No ampliar su
+  alcance ni crear hitos nuevos. La infraestructura documental y las referencias
+  se reutilizan entre ambos.
+- **H7 — Productividad LAN avanzada: PENDIENTE. H7b — App móvil con inferencia
+  nativa: PENDIENTE. H8 — Endurecimiento y release: PENDIENTE.**
+
+### Entregas técnicas completadas que no cambian la numeración del roadmap
+
+- **T-LLM (llamada “H3” en el repo): COMPLETA según reporte.** Cliente
+  OpenAI-compatible con `urllib`, CLI `rose llm`, pantalla experimental
+  deshabilitada por defecto, endpoint local, métricas sin contenido y concurrencia
+  limitada a un slot. No es el MCP H3 del roadmap ni un agente autónomo.
+- **T-CTX (llamada “H4” en el repo): COMPLETA según reporte.** `ContextPreflight`
+  mide el prompt con `/props`, `/apply-template` y `/tokenize`, aplica un
+  presupuesto fail-closed y no trunca ni reduce silenciosamente `max_tokens`.
+  Se reportaron 277 pruebas OK, 1 skip y seis comparaciones sintéticas con delta
+  cero; esa evidencia no garantiza otros modelos o versiones del servidor.
+
+`README.md` refleja ahora el estado local de H3; el handoff
+`docs/handoffs/H3-to-H4.md` sigue siendo histórico frente al task MCP y al Git
+actual. Las ramas locales no prueban el estado de PR remotos. No fusionar ni
+publicar sin autorización.
 
 Fuera de alcance por decisión explícita del usuario:
 
@@ -47,9 +106,9 @@ Fuera de alcance por decisión explícita del usuario:
 ## 3. Estructura
 
 ```text
-backend/rose_nexus/    core (errores, config) · studio (motor de documentos) ·
-                       security (política + sandbox) · storage (artefactos) ·
-                       web (FastAPI + UI) · ai (inferencia local) · cli.py
+backend/rose_nexus/    core · studio · security · storage · web (FastAPI + UI) ·
+                       ai (cliente de inferencia) · mcp (STDIO en desarrollo) ·
+                       cli.py
 branding/              perfiles versionados, plantillas y assets con hash
 deploy/                Dockerfile de la imagen TeX y variables de ejemplo
 docs/                  plan, arquitectura, amenazas, ADRs, inferencia y handoffs
@@ -58,18 +117,22 @@ tests/                 unit, integration, security, web, ai y fixtures
 scripts/               verificación reproducible y build de la imagen TeX
 ```
 
-Continuidad entre sesiones: leer `docs/handoffs/` (el más reciente primero).
-El handoff `H3-to-H4.md` resume estado, comandos, benchmarks, riesgos y alcance
-recomendado.
+Continuidad entre sesiones: primero leer este estado, luego
+`odd/tasks/rose-documents-mcp.md` hasta `## Log`, y después consultar
+`docs/production-plan.md` para alcance oficial. Usar
+`docs/Rose_Nexus_Contexto_de_Traspaso_v1.2_CORREGIDO.md` como antecedente
+histórico. `docs/handoffs/H3-to-H4.md` describe una etapa anterior; no sustituye
+el estado actual de Git. Revisar siempre la rama y los cambios locales antes de
+reanudar.
 
 ## 4. Comandos canónicos
 
 ```bash
-# Verificación completa (stdlib, sin instalar nada)
-./scripts/verify.sh
+# Verificación completa usando el entorno del proyecto (incluye dependencias web)
+PATH="$PWD/.venv/bin:$PATH" ./scripts/verify.sh
 
 # Suite directa
-PYTHONPATH=backend python3 -m unittest discover -s tests -t . -v
+PYTHONPATH=backend .venv/bin/python -m unittest discover -s tests -t . -v
 
 # CLIs
 PYTHONPATH=backend python3 -m rose_nexus.cli doctor
@@ -146,12 +209,14 @@ PYTHONPATH=backend python3 -m rose_nexus.cli convert tests/fixtures/markdown/01-
   siguen pendientes.
 - Las fuentes Archivo/IBM Plex no se empaquetan: licencias sin verificar.
 
-## 9. Inferencia local (H3/H4)
+## 9. Inferencia local y MCP supervisado
 
 - El modelo es **borrador, no verdad**: tiene errores factuales conocidos. Nunca
   se usa como fuente de verdad ni para decidir acciones.
-- **Prohibido** ejecutar herramientas elegidas por el modelo, bucles autónomos y
-  MCP: el modelo devuelve texto y nada más.
+- El modelo **no elige ni ejecuta herramientas de forma autónoma** y no inicia
+  bucles de agentes. El H3 oficial del roadmap incorpora un servidor MCP STDIO
+  supervisado e invocado explícitamente por Pi/persona; MCP no convierte el modelo
+  en autoridad ni permite saltarse validaciones, permisos o sandbox.
 - **Nunca** registrar prompts, respuestas ni `ROSE_LLM_API_KEY`. Solo métricas:
   tokens, latencia, tok/s, estado y código de error.
 - Endpoint **solo loopback**; se valida la resolución DNS en tiempo de llamada y

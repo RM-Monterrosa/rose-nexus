@@ -4,10 +4,16 @@ Plataforma personal y local para transformar documentos, estudiar y mover
 información entre dispositivos, con IA local opcional. El plan técnico vive en
 [`docs/production-plan.md`](docs/production-plan.md).
 
-**Estado actual:** H0, H1 (convertidor determinista), H2 (web MVP) y H3 (cliente de
-inferencia local + CLI + pantalla experimental). El PDF requiere una imagen TeX
-fijada por digest (`ROSE_SANDBOX_IMAGE`); sin ella el flujo `.tex` sigue
-funcionando y el PDF se rechaza con exit 4. No hay MCP, OCR, ASR ni agentes.
+**Estado actual:** H0 parcial; H1 (convertidor determinista) y H2 (web MVP)
+completos según verificaciones reportadas. H3 está en curso: el cliente de
+inferencia local es una entrega técnica separada y `rose-documents` ofrece MCP
+STDIO supervisado con cuatro herramientas ligadas a un usuario. Pi 1.5.2 las
+descubrió en una prueba aislada; la configuración del proyecto permanece
+opt-in/disabled y la verificación/cierre final de H3 sigue pendiente. El worker
+MCP es proceso-local: para la prueba inicial se detiene el worker web. El PDF
+requiere una imagen TeX fijada por digest (`ROSE_SANDBOX_IMAGE`); sin ella el
+flujo `.tex` sigue funcionando y el PDF se rechaza con exit 4. OCR, ASR y H4+
+siguen pendientes.
 
 ## Qué funciona hoy
 
@@ -59,7 +65,9 @@ rose convert documento.md --brand demo --out build   # provisional
 
 El modelo local (`rose-spark-4b` vía llama.cpp y túnel SSH en
 `127.0.0.1:18080`) se consulta con un cliente desacoplado. No convierte
-documentos, no ejecuta herramientas y no es fuente de verdad.
+documentos, no selecciona ni ejecuta herramientas y no es fuente de verdad. El
+MCP `rose-documents` es un servidor separado, invocado de forma supervisada por
+Pi/persona y con ownership/sandbox en los servicios Rose Nexus.
 
 ```bash
 export PYTHONPATH=backend ROSE_LLM_ENABLED=true
